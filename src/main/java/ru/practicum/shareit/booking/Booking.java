@@ -1,8 +1,9 @@
 package ru.practicum.shareit.booking;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.user.User;
+import ru.practicum.shareit.user.model.User;
 
 import java.time.LocalDateTime;
 
@@ -10,7 +11,8 @@ import java.time.LocalDateTime;
  * TODO Sprint add-bookings.
  */
 
-@Data
+@Getter
+@Setter
 public class Booking {
 
     private Long id;
@@ -19,4 +21,17 @@ public class Booking {
     private Item item;
     private User booker;
     private BookingStatus status;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Booking booking = (Booking) o;
+        return id != null && id.equals(booking.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }

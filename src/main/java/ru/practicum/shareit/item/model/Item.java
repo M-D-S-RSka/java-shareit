@@ -2,15 +2,19 @@ package ru.practicum.shareit.item.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import ru.practicum.shareit.request.ItemRequest;
-import ru.practicum.shareit.user.User;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.shareit.request.model.ItemRequest;
+import ru.practicum.shareit.user.model.User;
+
+import java.util.Objects;
 
 /**
  * TODO Sprint add-controllers.
  */
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @Builder
 public class Item {
@@ -21,4 +25,17 @@ public class Item {
     private Boolean available;
     private User owner;
     private ItemRequest request;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Item item = (Item) o;
+        return Objects.equals(id, item.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 }

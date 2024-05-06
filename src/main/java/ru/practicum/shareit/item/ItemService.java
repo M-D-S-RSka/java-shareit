@@ -8,13 +8,14 @@ import ru.practicum.shareit.exceptions.CustomExceptions.UserNotFoundException;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.storage.ItemStorage;
-import ru.practicum.shareit.user.User;
+import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.storage.UserStorage;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.springframework.util.ReflectionUtils.findField;
 import static org.springframework.util.ReflectionUtils.setField;
@@ -34,7 +35,7 @@ public class ItemService {
         return ItemMapper.itemDto(itemStorage.add(item));
     }
 
-    public ItemDto updateFields(Long userId, Long itemId, Map<String, Object> fields) {
+    public ItemDto updateItem(Long userId, Long itemId, Map<String, Object> fields) {
         User user = findUser(userId);
         Item item = findItem(itemId);
 
@@ -58,7 +59,6 @@ public class ItemService {
         } else {
             throw new UserNotFoundException(String.format("user %s is not the owner", user.getName()));
         }
-
     }
 
     public ItemDto findItemById(Long itemId) {
@@ -78,25 +78,19 @@ public class ItemService {
     }
 
     public List<ItemDto> search(String text) {
-        if (!text.isEmpty() && !text.isBlank()) {
-            List<ItemDto> itemsDto = new ArrayList<>();
-            String modifiedText = text.replaceAll(" ", "").toLowerCase();
-            for (Item item : itemStorage.findAll()) {
-                if ((item.getAvailable() && (item.getName().replaceAll(" ", "")
-                        .toLowerCase()
-                        .contains(modifiedText) || item.getDescription()
-                        .replaceAll(" ", "")
-                        .toLowerCase()
-                        .contains(modifiedText)))) {
-                    itemsDto.add(ItemMapper.itemDto(item));
-                }
-            }
-            log.info("total items = {} found by search string = {}", itemsDto.size(), text);
-            return itemsDto;
-        } else {
+        if (text == null || text.isBlank()) {
             log.error("empty search request");
             return new ArrayList<>();
         }
+
+        String modifiedText = text.replaceAll("\\s+", "").toLowerCase();
+        return itemStorage.findAll().stream()
+                .filter(item -> item.getAvailable() &&
+                        (item.getName().replaceAll("\\s+", "").toLowerCase().contains(modifiedText) ||
+                                item.getDescription().replaceAll("\\s+", "").toLowerCase()
+                                        .contains(modifiedText)))
+                .map(ItemMapper::itemDto)
+                .collect(Collectors.toList());
     }
 
     private User findUser(Long userId) {

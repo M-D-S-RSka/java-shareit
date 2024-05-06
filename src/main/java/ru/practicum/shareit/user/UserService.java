@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exceptions.CustomExceptions.EmailException;
 import ru.practicum.shareit.exceptions.CustomExceptions.UserException;
 import ru.practicum.shareit.user.dto.UserDto;
+import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.storage.UserStorage;
 
 import java.util.ArrayList;
