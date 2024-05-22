@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.comment.dto.CommentRequestDto;
+import ru.practicum.shareit.comment.dto.CommentResponseDto;
 import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.dto.ItemPlusResponseDto;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,18 +35,18 @@ public class ItemController {
     @PatchMapping("/{id}")
     public ItemDto updateItem(@RequestHeader(USER_ID_HEADER) Long userId, @PathVariable Long id,
                               @RequestBody @Validated Map<String, Object> fields) {
-        log.info("Updating item id: {} for user id: {}", id, userId);
+        log.info("Updating item id {} for user id {}", id, userId);
         return itemService.updateItem(userId, id, fields);
     }
 
     @GetMapping("/{id}")
-    public ItemDto findItemById(@PathVariable Long id) {
-        log.info("Finding item by id: {}", id);
-        return itemService.findItemById(id);
+    public ItemPlusResponseDto findItemById(@PathVariable Long id, @RequestHeader(USER_ID_HEADER) Long userId) {
+        log.info("Finding item by id {}", id);
+        return itemService.findItemById(id, userId);
     }
 
     @GetMapping
-    public List<ItemDto> findAllByUserId(@RequestHeader(USER_ID_HEADER) Long userId) {
+    public List<ItemPlusResponseDto> findAllByUserId(@RequestHeader(USER_ID_HEADER) Long userId) {
         log.info("Finding all items by user id: {}", userId);
         return itemService.findAllByUserId(userId);
     }
@@ -56,5 +59,12 @@ public class ItemController {
             return new ArrayList<>();
         }
         return itemService.search(text);
+    }
+
+    @PostMapping("/{itemId}/comment")
+    public CommentResponseDto addComment(@PathVariable Long itemId, @RequestHeader(USER_ID_HEADER) Long userId,
+                                         @RequestBody @Validated CommentRequestDto commentRequestDto) {
+        log.info("Adding new commentRequestDto={} for userId={} by itemId={}", commentRequestDto, userId, itemId);
+        return itemService.addComment(itemId, userId, commentRequestDto);
     }
 }
