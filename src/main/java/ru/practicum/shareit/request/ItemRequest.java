@@ -15,9 +15,10 @@ import java.util.Objects;
 @Getter
 @Setter
 @Entity
-@Table(name = "requests")
+@Table(name = "item_request")
 public class ItemRequest {
     @Id
+    @GeneratedValue
     private long id;
 
     private String description;

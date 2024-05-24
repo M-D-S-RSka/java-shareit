@@ -75,8 +75,9 @@ public class ItemService {
 
     public ItemPlusResponseDto findItemById(Long itemId, Long userId) {
         log.info("find item with id = {}", itemId);
-        Booking lastBooking = bookingRepository.findLastBookingBeforeNow(itemId, userId);
-        Booking nextBooking = bookingRepository.findNextBookingAfterNow(itemId, userId);
+        Booking lastBooking = bookingRepository
+                .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(itemId, userId);
+        Booking nextBooking = bookingRepository.findAllByBooker_IdOrderByStartDesc(itemId, userId);
         List<Comment> comments = commentRepository.findAllByItemId(itemId);
         return ItemMapper.toResponsePlusDto(findItem(itemId), lastBooking, nextBooking, comments);
     }
@@ -85,8 +86,10 @@ public class ItemService {
         List<ItemPlusResponseDto> itemsDto = new ArrayList<>();
         for (Item item : itemRepository.findAll()) {
             if (item.getOwner().getId().equals(userId)) {
-                Booking next = bookingRepository.findNextBookingAfterNow(item.getId(), userId);
-                Booking last = bookingRepository.findLastBookingBeforeNow(item.getId(), userId);
+                Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
+                Booking last = bookingRepository
+                        .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(
+                                item.getId(), userId);
                 List<Comment> comments = commentRepository.findAllByItemId(item.getId());
                 itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
             }

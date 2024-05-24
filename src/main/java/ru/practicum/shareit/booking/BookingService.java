@@ -26,8 +26,6 @@ public class BookingService {
     private final BookingRepository bookingRepository;
 
     public BookingResponseDto add(Long userId, BookingRequestDto bookingRequestDto) {
-        checkDateTime(bookingRequestDto.getStart(), bookingRequestDto.getEnd());
-
         Item item = itemRepository.findById(bookingRequestDto.getItemId())
                 .orElseThrow(() -> new CustomExceptions.ItemNotFoundException("Item not found"));
 
@@ -50,16 +48,8 @@ public class BookingService {
                 .orElseThrow(() -> new CustomExceptions.UserNotFoundException("User not found"));
     }
 
-    private void checkDateTime(LocalDateTime start, LocalDateTime end) {
-        if (end.isBefore(start)) {
-            throw new CustomExceptions.BookingDateTimeException("End date and time earlier than start date and time");
-        } else if (start.equals(end)) {
-            throw new CustomExceptions.BookingDateTimeException("The end and start dates and times are the same");
-        }
-    }
-
     public BookingResponseDto approveBooking(Long bookingId, Boolean approved, Long ownerId) {
-        Booking booking = bookingRepository.findBookingByIdAndOwnerId(ownerId, bookingId)
+        Booking booking = bookingRepository.findByItemOwner_IdAndId(ownerId, bookingId)
                 .orElseThrow(() -> new CustomExceptions.BookingNotFoundException("Requests not found"));
 
         if (booking.getStatus() == BookingStatus.APPROVED && approved) {
@@ -71,7 +61,7 @@ public class BookingService {
     }
 
     public BookingResponseDto getBookingByIdForOwnerOrBooker(Long bookingId, Long userId) {
-        Booking booking = bookingRepository.findBookingByIdAndOwnerIdOrBookerId(bookingId, userId)
+        Booking booking = bookingRepository.findAllByItemOwner_IdOrderByStartDesc(bookingId, userId)
                 .orElseThrow(() -> new CustomExceptions.BookingNotFoundException("Requests not found"));
         return BookingMapper.toResponseDto(bookingRepository.save(booking));
     }
@@ -81,7 +71,8 @@ public class BookingService {
         try {
             BookingState state = BookingState.valueOf(bookingState);
             bookings = userType.equals("OWNER") ? bookingRepository
-                    .findAllByOwnerId(userId) : bookingRepository.findAllByBookerId(userId);
+                    .findAllByItemOwner_IdOrderByStartDesc(userId) : bookingRepository
+                    .findAllByBooker_IdOrderByStartDesc(userId);
             if (bookings.isEmpty()) {
                 throw new CustomExceptions.BookingNotFoundException("Requests not found");
             }

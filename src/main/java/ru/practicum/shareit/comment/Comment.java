@@ -6,7 +6,6 @@ import ru.practicum.shareit.user.model.User;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 @Getter
 @Setter
@@ -15,6 +14,7 @@ import java.util.Objects;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "comments")
+@EqualsAndHashCode(of = "id")
 public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,17 +31,4 @@ public class Comment {
     private User author;
 
     private LocalDateTime created;
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Comment)) return false;
-        Comment comment = (Comment) o;
-        return Objects.equals(id, comment.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(id);
-    }
 }
