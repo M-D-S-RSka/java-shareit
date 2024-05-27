@@ -1,6 +1,7 @@
 package ru.practicum.shareit.exceptions;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -15,26 +16,33 @@ import javax.validation.ConstraintViolationException;
 public class ErrorHandler {
 
     @ResponseBody
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler({Exception.class})
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     ErrorResponse getRuntimeExceptionResponse(Exception e) {
         log.error("INTERNAL_SERVER_ERROR: {}", e.getMessage());
+        if (e.getClass().equals(CustomExceptions.BookingStateException.class)) {
+            return new ErrorResponse(e.getMessage(), e.getMessage());
+        }
         return new ErrorResponse("INTERNAL_SERVER_ERROR", e.getMessage());
     }
 
     @ResponseBody
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler({CustomExceptions.UserNotFoundException.class})
+    @ExceptionHandler({CustomExceptions.UserNotFoundException.class, CustomExceptions.ItemNotFoundException.class,
+            CustomExceptions.BookingNotFoundException.class
+    })
     ErrorResponse getUserNotFoundExceptionResponse(RuntimeException e) {
         log.error("NOT_FOUND: {}", e.getMessage());
         return new ErrorResponse("NOT_FOUND", e.getMessage());
     }
 
     @ResponseBody
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler({CustomExceptions.EmailException.class, MethodArgumentNotValidException.class,
-            ConstraintViolationException.class
+            ConstraintViolationException.class, DataIntegrityViolationException.class,
+            CustomExceptions.ItemNotAvailableException.class, CustomExceptions.BookingDateTimeException.class,
+            CustomExceptions.BookingStatusException.class
     })
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     ErrorResponse getEmailExceptionResponse(Exception e) {
         log.error("BAD_REQUEST: {}", e.getMessage());
         return new ErrorResponse("BAD_REQUEST", e.getMessage());

@@ -4,4 +4,7 @@ public interface Markers {
 
     interface Update {
     }
+
+    interface Create {
+    }
 }

@@ -3,16 +3,23 @@ package ru.practicum.shareit.item;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.practicum.shareit.exceptions.CustomExceptions.ItemException;
-import ru.practicum.shareit.exceptions.CustomExceptions.UserNotFoundException;
+import ru.practicum.shareit.booking.Booking;
+import ru.practicum.shareit.booking.BookingRepository;
+import ru.practicum.shareit.comment.Comment;
+import ru.practicum.shareit.comment.CommentMapper;
+import ru.practicum.shareit.comment.CommentRepository;
+import ru.practicum.shareit.comment.dto.CommentRequestDto;
+import ru.practicum.shareit.comment.dto.CommentResponseDto;
+import ru.practicum.shareit.exceptions.CustomExceptions;
 import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.dto.ItemPlusResponseDto;
 import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.storage.ItemStorage;
+import ru.practicum.shareit.user.UserRepository;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.storage.UserStorage;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,17 +32,21 @@ import static org.springframework.util.ReflectionUtils.setField;
 @RequiredArgsConstructor
 public class ItemService {
 
-    private final ItemStorage itemStorage;
-    private final UserStorage userStorage;
+    private final UserRepository userRepository;
+    private final ItemRepository itemRepository;
+    private final BookingRepository bookingRepository;
+    private final CommentRepository commentRepository;
 
     public ItemDto add(Long userId, ItemDto itemDto) {
         User user = findUser(userId);
-        Item item = ItemMapper.itemModel(itemDto, user);
+        Item item = ItemMapper.toModel(itemDto, user);
+
         log.info("add a new item: {}; for a user with id = {}", itemDto, userId);
-        return ItemMapper.itemDto(itemStorage.add(item));
+        return ItemMapper.toDto(itemRepository.save(item));
     }
 
     public ItemDto updateItem(Long userId, Long itemId, Map<String, Object> fields) {
+        log.info("Let's update a thing with id = {} from a user with id = {}", userId, itemId);
         User user = findUser(userId);
         Item item = findItem(itemId);
 
@@ -53,26 +64,40 @@ public class ItemService {
                     }
                 }
             }
-            itemStorage.update(item);
+            itemRepository.save(item);
+
             log.info("update the item with id = {} from the user with id = {}", itemId, userId);
-            return ItemMapper.itemDto(item);
+            return ItemMapper.toDto(item);
         } else {
-            throw new UserNotFoundException(String.format("user %s is not the owner", user.getName()));
+            throw new CustomExceptions.UserNotFoundException(String.format("user %s is not the owner", user.getName()));
         }
     }
 
-    public ItemDto findItemById(Long itemId) {
+    public ItemPlusResponseDto findItemById(Long itemId, Long userId) {
         log.info("find item with id = {}", itemId);
-        return ItemMapper.itemDto(findItem(itemId));
+        Booking lastBooking = bookingRepository
+                .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(itemId, userId);
+        Booking nextBooking = bookingRepository.findAllByBooker_IdOrderByStartDesc(itemId, userId);
+        List<Comment> comments = commentRepository.findAllByItemId(itemId);
+        return ItemMapper.toResponsePlusDto(findItem(itemId), lastBooking, nextBooking, comments);
     }
 
-    public List<ItemDto> findAllByUserId(Long userId) {
-        List<ItemDto> itemsDto = new ArrayList<>();
-        for (Item item : itemStorage.findAll()) {
+    public List<ItemPlusResponseDto> findAllByUserId(Long userId) {
+        List<ItemPlusResponseDto> itemsDto = new ArrayList<>();
+        for (Item item : itemRepository.findAll()) {
             if (item.getOwner().getId().equals(userId)) {
-                itemsDto.add(ItemMapper.itemDto(item));
+                Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
+                Booking last = bookingRepository
+                        .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(
+                                item.getId(), userId);
+                List<Comment> comments = commentRepository.findAllByItemId(item.getId());
+                itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
             }
         }
+
+        Comparator<ItemPlusResponseDto> comparator = Comparator.comparing(ItemPlusResponseDto::getId);
+        itemsDto.sort(comparator);
+
         log.info("found all user items = {} with id = {}", itemsDto.size(), userId);
         return itemsDto;
     }
@@ -82,34 +107,34 @@ public class ItemService {
             log.error("empty search request");
             return new ArrayList<>();
         }
-
-        String modifiedText = text.replaceAll("\\s+", "").toLowerCase();
-        return itemStorage.findAll().stream()
-                .filter(item -> item.getAvailable() &&
-                        (item.getName().replaceAll("\\s+", "").toLowerCase().contains(modifiedText) ||
-                                item.getDescription().replaceAll("\\s+", "").toLowerCase()
-                                        .contains(modifiedText)))
-                .map(ItemMapper::itemDto)
-                .collect(Collectors.toList());
+        return itemRepository.search(text).stream().map(ItemMapper::toDto).collect(Collectors.toList());
     }
 
     private User findUser(Long userId) {
-        User user = userStorage.findById(userId);
-        if (user != null) {
-            log.info("find a user with id = {}", userId);
-            return user;
-        } else {
-            throw new UserNotFoundException("user not found");
-        }
+        log.info("find a user with id = {}", userId);
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.UserNotFoundException("user not found"));
     }
 
     private Item findItem(Long itemId) {
-        Item item = itemStorage.findById(itemId);
-        if (item != null) {
-            log.info("find a item with id = {}", itemId);
-            return item;
+        log.info("find a item with id = {}", itemId);
+        return itemRepository.findById(itemId)
+                .orElseThrow(() -> new CustomExceptions.ItemNotFoundException("Item not found"));
+    }
+
+    public CommentResponseDto addComment(Long itemId, Long userId, CommentRequestDto commentRequestDto) {
+        Item item = itemRepository.findByIdAndBookerIdAndFinishedBooking(userId, itemId).orElseThrow(
+                () -> new CustomExceptions.ItemNotAvailableException("The item is not available for comment"));
+        User user = findUser(userId);
+
+        if (commentRequestDto.getText() != null && !commentRequestDto.getText().isEmpty()) {
+            Comment comment = CommentMapper.toModel(commentRequestDto, user, item);
+            commentRepository.save(comment);
+
+            log.info("User id={} added a comment to the id={} thing.", userId, itemId);
+            return CommentMapper.toResponseDto(comment);
         } else {
-            throw new ItemException("item not found");
+            throw new CustomExceptions.UserException("The comment text cannot be empty");
         }
     }
 }

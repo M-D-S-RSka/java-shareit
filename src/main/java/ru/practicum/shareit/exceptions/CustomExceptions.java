@@ -20,6 +20,42 @@ public class CustomExceptions {
         }
     }
 
+    public static class ItemNotFoundException extends ItemException {
+        public ItemNotFoundException(String message) {
+            super(message);
+        }
+    }
+
+    public static class ItemNotAvailableException extends ItemException {
+        public ItemNotAvailableException(String message) {
+            super(message);
+        }
+    }
+
+    public static class BookingDateTimeException extends RuntimeException {
+        public BookingDateTimeException(String message) {
+            super(message);
+        }
+    }
+
+    public static class BookingNotFoundException extends RuntimeException {
+        public BookingNotFoundException(String message) {
+            super(message);
+        }
+    }
+
+    public static class BookingStatusException extends RuntimeException {
+        public BookingStatusException(String message) {
+            super(message);
+        }
+    }
+
+    public static class BookingStateException extends RuntimeException {
+        public BookingStateException(String message) {
+            super(message);
+        }
+    }
+
     public static class EmailException extends UserException {
         public EmailException(String message) {
             super(message);
