@@ -12,6 +12,9 @@ public class DateTimeValidator implements ConstraintValidator<ValidDateTime, Boo
         if (bookingRequestDto.getStart() == null || bookingRequestDto.getEnd() == null) {
             return true;
         }
+        if (bookingRequestDto.getStart().isEqual(bookingRequestDto.getEnd())) {
+            return false;
+        }
         return bookingRequestDto.getEnd().isAfter(bookingRequestDto.getStart());
     }
 }

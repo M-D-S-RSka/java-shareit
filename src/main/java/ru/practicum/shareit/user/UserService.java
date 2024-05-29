@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exceptions.CustomExceptions;
 import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.model.User;
@@ -17,6 +18,7 @@ import java.util.List;
 public class UserService {
     private final UserRepository userRepository;
 
+    @Transactional
     public UserDto add(UserDto userDto) {
         try {
             User user = userRepository.save(UserMapper.userModel(userDto));
@@ -27,6 +29,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public UserDto update(UserDto userRequest, Long id) {
         User user = getUserById(id);
         String name = userRequest.getName();
@@ -52,6 +55,7 @@ public class UserService {
         return UserMapper.userDto(getUserById(id));
     }
 
+    @Transactional
     public void removeById(Long id) {
         log.info("deleting a user with an id = {}", id);
         userRepository.deleteById(id);

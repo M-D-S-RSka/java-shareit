@@ -1,7 +1,6 @@
 package ru.practicum.shareit.exceptions;
 
 public class CustomExceptions {
-
     public static class UserException extends RuntimeException {
         public UserException(String message) {
             super(message);
@@ -32,12 +31,6 @@ public class CustomExceptions {
         }
     }
 
-    public static class BookingDateTimeException extends RuntimeException {
-        public BookingDateTimeException(String message) {
-            super(message);
-        }
-    }
-
     public static class BookingNotFoundException extends RuntimeException {
         public BookingNotFoundException(String message) {
             super(message);
@@ -56,8 +49,8 @@ public class CustomExceptions {
         }
     }
 
-    public static class EmailException extends UserException {
-        public EmailException(String message) {
+    public static class ItemRequestNotFoundException extends RuntimeException {
+        public ItemRequestNotFoundException(String message) {
             super(message);
         }
     }

@@ -2,7 +2,9 @@ package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.Booking;
 import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.comment.Comment;
@@ -14,6 +16,8 @@ import ru.practicum.shareit.exceptions.CustomExceptions;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.dto.ItemPlusResponseDto;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.request.ItemRequest;
+import ru.practicum.shareit.request.ItemRequestRepository;
 import ru.practicum.shareit.user.UserRepository;
 import ru.practicum.shareit.user.model.User;
 
@@ -36,15 +40,27 @@ public class ItemService {
     private final ItemRepository itemRepository;
     private final BookingRepository bookingRepository;
     private final CommentRepository commentRepository;
+    private final ItemRequestRepository itemRequestRepository;
 
+    @Transactional
     public ItemDto add(Long userId, ItemDto itemDto) {
         User user = findUser(userId);
-        Item item = ItemMapper.toModel(itemDto, user);
+        Item item;
+
+        if (itemDto.getRequestId() != null) {
+            ItemRequest itemRequest = itemRequestRepository.findById(itemDto.getRequestId()).orElse(null);
+            item = ItemMapper.toModel(itemDto, user, itemRequest);
+        } else {
+            item = ItemMapper.toModel(itemDto, user);
+        }
+
+        Item itemToSave = itemRepository.save(item);
 
         log.info("add a new item: {}; for a user with id = {}", itemDto, userId);
-        return ItemMapper.toDto(itemRepository.save(item));
+        return ItemMapper.toDto(itemToSave);
     }
 
+    @Transactional
     public ItemDto updateItem(Long userId, Long itemId, Map<String, Object> fields) {
         log.info("Let's update a thing with id = {} from a user with id = {}", userId, itemId);
         User user = findUser(userId);
@@ -82,17 +98,14 @@ public class ItemService {
         return ItemMapper.toResponsePlusDto(findItem(itemId), lastBooking, nextBooking, comments);
     }
 
-    public List<ItemPlusResponseDto> findAllByUserId(Long userId) {
+    public List<ItemPlusResponseDto> findAllByUserId(Long userId, Pageable pageable) {
         List<ItemPlusResponseDto> itemsDto = new ArrayList<>();
-        for (Item item : itemRepository.findAll()) {
-            if (item.getOwner().getId().equals(userId)) {
-                Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
-                Booking last = bookingRepository
-                        .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(
-                                item.getId(), userId);
-                List<Comment> comments = commentRepository.findAllByItemId(item.getId());
-                itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
-            }
+        User user = findUser(userId);
+        for (Item item : itemRepository.findByOwner(user, pageable)) {
+            Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
+            Booking last = bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(item.getId(), userId);
+            List<Comment> comments = commentRepository.findAllByItemId(item.getId());
+            itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
         }
 
         Comparator<ItemPlusResponseDto> comparator = Comparator.comparing(ItemPlusResponseDto::getId);
@@ -100,14 +113,34 @@ public class ItemService {
 
         log.info("found all user items = {} with id = {}", itemsDto.size(), userId);
         return itemsDto;
+
+//        for (Item item : itemRepository.findAll()) {
+//            if (item.getOwner().getId().equals(userId)) {
+//                Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
+//                Booking last = bookingRepository
+//                        .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(
+//                                item.getId(), userId);
+//                List<Comment> comments = commentRepository.findAllByItemId(item.getId());
+//                itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
+//            }
+//        }
+
+
     }
 
-    public List<ItemDto> search(String text) {
+    public List<ItemDto> search(String text, Pageable pageable) {
         if (text == null || text.isBlank()) {
             log.error("empty search request");
             return new ArrayList<>();
         }
-        return itemRepository.search(text).stream().map(ItemMapper::toDto).collect(Collectors.toList());
+        List<ItemDto> itemsDto = new ArrayList<>();
+        for (Item item : itemRepository.search(text, pageable)) {
+            ItemDto dto = ItemMapper.toDto(item);
+            itemsDto.add(dto);
+        }
+        log.info("Total items found: {}", itemsDto.size());
+        return itemsDto;
+//        return itemRepository.search(text).stream().map(ItemMapper::toDto).collect(Collectors.toList());
     }
 
     private User findUser(Long userId) {
@@ -122,6 +155,7 @@ public class ItemService {
                 .orElseThrow(() -> new CustomExceptions.ItemNotFoundException("Item not found"));
     }
 
+    @Transactional
     public CommentResponseDto addComment(Long itemId, Long userId, CommentRequestDto commentRequestDto) {
         Item item = itemRepository.findByIdAndBookerIdAndFinishedBooking(userId, itemId).orElseThrow(
                 () -> new CustomExceptions.ItemNotAvailableException("The item is not available for comment"));

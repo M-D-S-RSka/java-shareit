@@ -7,6 +7,7 @@ import ru.practicum.shareit.markers.Markers;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Null;
 
 /**
  * TODO Sprint add-controllers.
@@ -28,4 +29,6 @@ public class ItemDto {
 
     @NotNull
     private Boolean available;
+
+    private Long requestId;
 }
