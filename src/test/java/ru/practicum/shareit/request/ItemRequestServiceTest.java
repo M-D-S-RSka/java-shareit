@@ -26,7 +26,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static ru.practicum.shareit.utils.UtilsClass.getPageable;
-import static io.restassured.RestAssured.given;
 
 @ExtendWith(MockitoExtension.class)
 public class ItemRequestServiceTest {
@@ -176,15 +175,5 @@ public class ItemRequestServiceTest {
 
         Assertions.assertThatExceptionOfType(CustomExceptions.ItemRequestNotFoundException.class)
                 .isThrownBy(() -> itemRequestService.findByRequestId(1L, 1L));
-    }
-
-    // Test to verify that the status code is 200 and to list item requests response
-    @Test
-    public void testListItemRequestsResponse() {
-        given()
-                .when()
-                .get("http://localhost:8080/requests")
-                .then()
-                .statusCode(500);
     }
 }
