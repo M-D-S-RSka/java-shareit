@@ -23,82 +23,77 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(UserController.class)
 public class UserControllerTest {
-  @Autowired private MockMvc mockMvc;
-  @MockBean UserService userService;
+    @Autowired
+    private MockMvc mockMvc;
+    @MockBean
+    UserService userService;
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-  private UserDto userRequestDto;
-  private UserDto userResponseDto;
+    private UserDto userRequestDto;
+    private UserDto userResponseDto;
 
-  @BeforeEach
-  public void setUp() {
-    userRequestDto = UserDto.builder().name("Timmy").email("timmy@email.com").build();
-    userResponseDto = UserDto.builder().id(1L).name("Timmy").email("timmy@email.com").build();
-  }
+    @BeforeEach
+    public void setUp() {
+        userRequestDto = UserDto.builder().name("Timmy").email("timmy@email.com").build();
+        userResponseDto = UserDto.builder().id(1L).name("Timmy").email("timmy@email.com").build();
+    }
 
-  @Test
-  public void createShouldReturnUserDto() throws Exception {
-    when(userService.add(any(UserDto.class))).thenReturn(userResponseDto);
+    @Test
+    public void createShouldReturnUserDto() throws Exception {
+        when(userService.add(any(UserDto.class))).thenReturn(userResponseDto);
 
-    mockMvc
-        .perform(
-            post("/users")
-                .content(objectMapper.writeValueAsString(userRequestDto))
-                .characterEncoding(StandardCharsets.UTF_8)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(1))
-        .andExpect(jsonPath("$.name").value("Timmy"))
-        .andExpect(jsonPath("$.email").value("timmy@email.com"));
-  }
+        mockMvc.perform(post("/users")
+                        .content(objectMapper.writeValueAsString(userRequestDto))
+                        .characterEncoding(StandardCharsets.UTF_8)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("Timmy"))
+                .andExpect(jsonPath("$.email").value("timmy@email.com"));
+    }
 
-  @Test
-  public void updateShouldReturnUpdatedUserDto() throws Exception {
-    UserDto updatedUserDto =
-        UserDto.builder().id(1L).name("Timmy2").email("timmy2@email.com").build();
+    @Test
+    public void updateShouldReturnUpdatedUserDto() throws Exception {
+        UserDto updatedUserDto = UserDto.builder().id(1L).name("Timmy2").email("timmy2@email.com").build();
 
-    when(userService.update(any(UserDto.class), anyLong())).thenReturn(updatedUserDto);
+        when(userService.update(any(UserDto.class), anyLong())).thenReturn(updatedUserDto);
 
-    mockMvc
-        .perform(
-            patch("/users/{id}", 1)
-                .content(objectMapper.writeValueAsString(userRequestDto))
-                .characterEncoding(StandardCharsets.UTF_8)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(updatedUserDto.getId()))
-        .andExpect(jsonPath("$.name").value(updatedUserDto.getName()))
-        .andExpect(jsonPath("$.email").value(updatedUserDto.getEmail()));
-  }
+        mockMvc.perform(patch("/users/{id}", 1)
+                        .content(objectMapper.writeValueAsString(userRequestDto))
+                        .characterEncoding(StandardCharsets.UTF_8)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(updatedUserDto.getId()))
+                .andExpect(jsonPath("$.name").value(updatedUserDto.getName()))
+                .andExpect(jsonPath("$.email").value(updatedUserDto.getEmail()));
+    }
 
-  @Test
-  void findByIdShouldReturnUserDto() throws Exception {
-    when(userService.findById(anyLong())).thenReturn(userResponseDto);
+    @Test
+    void findByIdShouldReturnUserDto() throws Exception {
+        when(userService.findById(anyLong())).thenReturn(userResponseDto);
 
-    mockMvc
-        .perform(get("/users/{id}", 1))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(userResponseDto.getId()))
-        .andExpect(jsonPath("$.name").value(userResponseDto.getName()))
-        .andExpect(jsonPath("$.email").value(userResponseDto.getEmail()));
-  }
+        mockMvc.perform(get("/users/{id}", 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(userResponseDto.getId()))
+                .andExpect(jsonPath("$.name").value(userResponseDto.getName()))
+                .andExpect(jsonPath("$.email").value(userResponseDto.getEmail()));
+    }
 
-  @Test
-  void removeByIdShouldReturnStatusOk() throws Exception {
-    doNothing().when(userService);
-    mockMvc.perform(delete("/users/{id}", 1)).andExpect(status().isOk());
-  }
+    @Test
+    void removeByIdShouldReturnStatusOk() throws Exception {
+        doNothing().when(userService);
+        mockMvc.perform(delete("/users/{id}", 1)).andExpect(status().isOk());
+    }
 
-  @Test
-  void findAllReturnListOfUserDtos() throws Exception {
-    when(userService.findAll()).thenReturn(Collections.singletonList(userResponseDto));
+    @Test
+    void findAllReturnListOfUserDtos() throws Exception {
+        when(userService.findAll()).thenReturn(Collections.singletonList(userResponseDto));
 
-    mockMvc
-        .perform(get("/users"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1));
-  }
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
 }

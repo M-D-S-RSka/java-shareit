@@ -24,7 +24,7 @@ public class ItemMapper {
                 .build();
     }
 
-    public static Item toModel(ItemDto itemDto, User user,  ItemRequest itemRequest) {
+    public static Item toModel(ItemDto itemDto, User user, ItemRequest itemRequest) {
         return Item.builder()
                 .name(itemDto.getName())
                 .description(itemDto.getDescription())

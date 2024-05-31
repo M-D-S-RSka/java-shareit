@@ -30,296 +30,287 @@ import static ru.practicum.shareit.utils.UtilsClass.getPageable;
 
 @ExtendWith(MockitoExtension.class)
 public class BookingServiceTest {
-  @Mock private BookingRepository bookingRepository;
-  @Mock private UserRepository userRepository;
-  @Mock private ItemRepository itemRepository;
-
-  @InjectMocks private BookingService bookingService;
-
-  private final LocalDateTime now = LocalDateTime.now();
-  private final LocalDateTime start = LocalDateTime.of(2025, 1, 1, 1, 1, 1);
-  private final LocalDateTime end = LocalDateTime.of(2025, 1, 1, 2, 1, 1);
-
-  private BookingResponseDto bookingResponseDto;
-
-  private User user;
-  private User otherUser;
-  private ItemRequest itemRequest;
-  private Item item;
-  private Booking booking;
-  private BookingRequestDto bookingRequestDto;
-  private Pageable pageable;
-
-  @BeforeEach
-  public void setUp() {
-    pageable = getPageable(0, 10);
-    user = User.builder().id(1L).name("Timmy").email("timmy@email.com").build();
-    otherUser = User.builder().id(2L).name("Gimmy").email("gimmy@email.com").build();
-    itemRequest =
-        ItemRequest.builder()
-            .id(1L)
-            .description("Item request description")
-            .requester(user)
-            .created(now)
-            .build();
-    item =
-        Item.builder()
-            .id(1L)
-            .name("Item name")
-            .description("Item description")
-            .available(true)
-            .owner(user)
-            .build();
-    booking =
-        Booking.builder()
-            .id(1L)
-            .booker(user)
-            .status(BookingStatus.WAITING)
-            .item(item)
-            .start(start)
-            .end(end)
-            .build();
-    bookingRequestDto = BookingRequestDto.builder().itemId(1L).start(start).end(end).build();
-  }
-
-  @Test
-  public void createShouldReturnBookingResponseDto() {
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(otherUser));
-    when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
-
-    long userId = 2L;
-
-    BookingResponseDto createdBookingResponseDto = bookingService.add(userId, bookingRequestDto);
-
-    assertThat(createdBookingResponseDto).isNotNull();
-    assertThat(createdBookingResponseDto.getId()).isEqualTo(1);
-    assertThat(createdBookingResponseDto.getStart()).isEqualTo(start);
-  }
-
-  @Test
-  public void createShouldReturnItemNotFoundExceptionWrongBooking() {
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
-
-    long userId = 1L;
-
-    assertThatExceptionOfType(CustomExceptions.ItemNotFoundException.class)
-        .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
-  }
-
-  @Test
-  public void createShouldReturnItemNotFoundException() {
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-    long userId = 1L;
-
-    assertThatExceptionOfType(CustomExceptions.ItemNotFoundException.class)
-        .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
-  }
-
-  @Test
-  public void createShouldReturnItemNotAvailableException() {
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
-
-    item.setAvailable(false);
-
-    long userId = 1L;
-
-    assertThatExceptionOfType(CustomExceptions.ItemNotAvailableException.class)
-        .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
-  }
-
-  @Test
-  public void createShouldReturnUserNotFoundException() {
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-    long userId = 2L;
-
-    assertThatExceptionOfType(CustomExceptions.UserNotFoundException.class)
-        .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
-  }
-
-  @Test
-  public void approveBookingShouldReturnBookingNotFoundException() {
-    when(bookingRepository.findByItemOwner_IdAndId(anyLong(), anyLong()))
-        .thenReturn(Optional.empty());
-
-    long bookingId = 1;
-    long userId = 1;
-    boolean status = true;
-
-    assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
-        .isThrownBy(() -> bookingService.approveBooking(bookingId, status, userId));
-  }
-
-  @Test
-  public void approveBookingShouldReturnBookingStatusException() {
-    when(bookingRepository.findByItemOwner_IdAndId(anyLong(), anyLong()))
-        .thenReturn(Optional.ofNullable(booking));
-
-    long bookingId = 1;
-    long userId = 1;
-    boolean status = true;
-
-    booking.setStatus(BookingStatus.APPROVED);
-
-    assertThatExceptionOfType(CustomExceptions.BookingStatusException.class)
-        .isThrownBy(() -> bookingService.approveBooking(bookingId, status, userId));
-  }
-
-  @Test
-  public void approveBookingShouldReturnBookingResponseDto() {
-    when(bookingRepository.findByItemOwner_IdAndId(anyLong(), anyLong()))
-        .thenReturn(Optional.ofNullable(booking));
-    when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
-
-    long bookingId = 1;
-    long userId = 1;
-    boolean status = true;
-
-    BookingResponseDto approvedBookingResponseDto =
-        bookingService.approveBooking(bookingId, status, userId);
-
-    assertThat(approvedBookingResponseDto).isNotNull();
-    assertThat(approvedBookingResponseDto.getStatus()).isEqualTo(BookingStatus.APPROVED.toString());
-  }
-
-  @Test
-  public void getBookingByIdForOwnerOrBookerShouldReturnBookingNotFoundException() {
-    when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), anyLong()))
-        .thenReturn(Optional.empty());
-
-    long bookingId = 1;
-    long userId = 1;
-
-    assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
-        .isThrownBy(() -> bookingService.getBookingByIdForOwnerOrBooker(bookingId, userId));
-  }
-
-  @Test
-  public void getBookingByIdForOwnerOrBookerShouldReturnBookingResponseDto() {
-    when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), anyLong()))
-        .thenReturn(Optional.ofNullable(booking));
-    when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
-
-    long bookingId = 1;
-    long userId = 1;
+    @Mock
+    private BookingRepository bookingRepository;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private ItemRepository itemRepository;
+    @InjectMocks
+    private BookingService bookingService;
+
+    private final LocalDateTime now = LocalDateTime.now();
+    private final LocalDateTime start = LocalDateTime.of(2025, 1, 1, 1, 1, 1);
+    private final LocalDateTime end = LocalDateTime.of(2025, 1, 1, 2, 1, 1);
+
+    private User user;
+    private User otherUser;
+    private ItemRequest itemRequest;
+    private Item item;
+    private Booking booking;
+    private BookingRequestDto bookingRequestDto;
+    private Pageable pageable;
+
+    @BeforeEach
+    public void setUp() {
+        pageable = getPageable(0, 10);
+        user = User.builder().id(1L).name("Timmy").email("timmy@email.com").build();
+        otherUser = User.builder().id(2L).name("Gimmy").email("gimmy@email.com").build();
+        itemRequest = ItemRequest.builder()
+                .id(1L)
+                .description("Item request description")
+                .requester(user)
+                .created(now)
+                .build();
+        item = Item.builder()
+                .id(1L)
+                .name("Item name")
+                .description("Item description")
+                .available(true)
+                .owner(user)
+                .build();
+        booking = Booking.builder()
+                .id(1L)
+                .booker(user)
+                .status(BookingStatus.WAITING)
+                .item(item)
+                .start(start)
+                .end(end)
+                .build();
+        bookingRequestDto = BookingRequestDto.builder().itemId(1L).start(start).end(end).build();
+    }
+
+    @Test
+    public void createShouldReturnBookingResponseDto() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(otherUser));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+        long userId = 2L;
+        BookingResponseDto createdBookingResponseDto = bookingService.add(userId, bookingRequestDto);
+
+        assertThat(createdBookingResponseDto).isNotNull();
+        assertThat(createdBookingResponseDto.getId()).isEqualTo(1);
+        assertThat(createdBookingResponseDto.getStart()).isEqualTo(start);
+    }
+
+    @Test
+    public void createShouldReturnItemNotFoundExceptionWrongBooking() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+
+        long userId = 1L;
+
+        assertThatExceptionOfType(CustomExceptions.ItemNotFoundException.class)
+                .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
+    }
+
+    @Test
+    public void createShouldReturnItemNotFoundException() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        long userId = 1L;
+
+        assertThatExceptionOfType(CustomExceptions.ItemNotFoundException.class)
+                .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
+    }
+
+    @Test
+    public void createShouldReturnItemNotAvailableException() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+
+        item.setAvailable(false);
+        long userId = 1L;
+
+        assertThatExceptionOfType(CustomExceptions.ItemNotAvailableException.class)
+                .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
+    }
+
+    @Test
+    public void createShouldReturnUserNotFoundException() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        long userId = 2L;
 
-    BookingResponseDto foundBookingResponseDto =
-        bookingService.getBookingByIdForOwnerOrBooker(bookingId, userId);
+        assertThatExceptionOfType(CustomExceptions.UserNotFoundException.class)
+                .isThrownBy(() -> bookingService.add(userId, bookingRequestDto));
+    }
 
-    assertThat(foundBookingResponseDto).isNotNull();
-    assertThat(foundBookingResponseDto.getId()).isEqualTo(bookingId);
-    assertThat(foundBookingResponseDto.getBooker().getId()).isEqualTo(userId);
-  }
+    @Test
+    public void approveBookingShouldReturnBookingNotFoundException() {
+        when(bookingRepository.findByItemOwner_IdAndId(anyLong(), anyLong())).thenReturn(Optional.empty());
 
-  @Test
-  public void getAllBookingsForBookerStateAll() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
-
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForBooker(1L, BookingState.ALL, pageable);
+        long bookingId = 1;
+        long userId = 1;
+        boolean status = true;
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+        assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
+                .isThrownBy(() -> bookingService.approveBooking(bookingId, status, userId));
+    }
 
-  @Test
-  public void getAllBookingsForOwnerStateAll() {
-    when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
+    @Test
+    public void approveBookingShouldReturnBookingStatusException() {
+        when(bookingRepository.findByItemOwner_IdAndId(anyLong(), anyLong())).thenReturn(Optional.ofNullable(booking));
+
+        long bookingId = 1;
+        long userId = 1;
+        boolean status = true;
 
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForOwner(1L, BookingState.ALL, pageable);
+        booking.setStatus(BookingStatus.APPROVED);
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+        assertThatExceptionOfType(CustomExceptions.BookingStatusException.class)
+                .isThrownBy(() -> bookingService.approveBooking(bookingId, status, userId));
+    }
 
-  @Test
-  public void getAllBookingsForBookerShouldReturnException() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.emptyList());
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+    @Test
+    public void approveBookingShouldReturnBookingResponseDto() {
+        when(bookingRepository.findByItemOwner_IdAndId(anyLong(), anyLong())).thenReturn(Optional.ofNullable(booking));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
-    assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
-        .isThrownBy(() -> bookingService.getAllBookingsForBooker(1L, BookingState.ALL, pageable));
-  }
+        long bookingId = 1;
+        long userId = 1;
+        boolean status = true;
 
-  @Test
-  public void getAllBookingsForOwnerShouldReturnException() {
-    when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), any(Pageable.class)))
-        .thenReturn(Collections.emptyList());
+        BookingResponseDto approvedBookingResponseDto = bookingService.approveBooking(bookingId, status, userId);
 
-    assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
-        .isThrownBy(() -> bookingService.getAllBookingsForOwner(1L, BookingState.ALL, pageable));
-  }
+        assertThat(approvedBookingResponseDto).isNotNull();
+        assertThat(approvedBookingResponseDto.getStatus()).isEqualTo(BookingStatus.APPROVED.toString());
+    }
 
-  @Test
-  public void getAllBookingsForBookerStateCurrent() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+    @Test
+    public void getBookingByIdForOwnerOrBookerShouldReturnBookingNotFoundException() {
+        when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), anyLong()))
+                .thenReturn(Optional.empty());
 
-    booking.setStart(LocalDateTime.of(2020, 1, 1, 1, 1, 1));
+        long bookingId = 1;
+        long userId = 1;
 
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForBooker(1L, BookingState.CURRENT, pageable);
+        assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
+                .isThrownBy(() -> bookingService.getBookingByIdForOwnerOrBooker(bookingId, userId));
+    }
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+    @Test
+    public void getBookingByIdForOwnerOrBookerShouldReturnBookingResponseDto() {
+        when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), anyLong()))
+                .thenReturn(Optional.ofNullable(booking));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
-  @Test
-  public void getAllBookingsForBookerStatePast() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        long bookingId = 1;
+        long userId = 1;
 
-    booking.setStart(LocalDateTime.of(2020, 1, 1, 1, 1, 1));
-    booking.setEnd(LocalDateTime.of(2020, 1, 2, 1, 1, 1));
+        BookingResponseDto foundBookingResponseDto = bookingService.getBookingByIdForOwnerOrBooker(bookingId, userId);
 
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForBooker(1L, BookingState.PAST, pageable);
+        assertThat(foundBookingResponseDto).isNotNull();
+        assertThat(foundBookingResponseDto.getId()).isEqualTo(bookingId);
+        assertThat(foundBookingResponseDto.getBooker().getId()).isEqualTo(userId);
+    }
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+    @Test
+    public void getAllBookingsForBookerStateAll() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
 
-  @Test
-  public void getAllBookingsForBookerStateFuture() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForBooker(1L, BookingState.ALL, pageable);
 
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForBooker(1L, BookingState.FUTURE, pageable);
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+    @Test
+    public void getAllBookingsForOwnerStateAll() {
+        when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
 
-  @Test
-  public void getAllBookingsForBookerStateRejected() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForOwner(1L, BookingState.ALL, pageable);
 
-    booking.setStatus(BookingStatus.REJECTED);
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
 
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForBooker(1L, BookingState.REJECTED, pageable);
+    @Test
+    public void getAllBookingsForBookerShouldReturnException() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.emptyList());
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+        assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
+                .isThrownBy(() -> bookingService.getAllBookingsForBooker(1L, BookingState.ALL, pageable));
+    }
 
-  @Test
-  public void getAllBookingsForBookerStateWaiting() {
-    when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(booking));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+    @Test
+    public void getAllBookingsForOwnerShouldReturnException() {
+        when(bookingRepository.findAllByItemOwner_IdOrderByStartDesc(anyLong(), any(Pageable.class)))
+                .thenReturn(Collections.emptyList());
 
-    List<BookingResponseDto> bookingResponseDtos =
-        bookingService.getAllBookingsForBooker(1L, BookingState.WAITING, pageable);
+        assertThatExceptionOfType(CustomExceptions.BookingNotFoundException.class)
+                .isThrownBy(() -> bookingService.getAllBookingsForOwner(1L, BookingState.ALL, pageable));
+    }
 
-    assertThat(bookingResponseDtos.size()).isGreaterThan(0);
-  }
+    @Test
+    public void getAllBookingsForBookerStateCurrent() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+
+        booking.setStart(LocalDateTime.of(2020, 1, 1, 1, 1, 1));
+
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForBooker(1L, BookingState.CURRENT, pageable);
+
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
+
+    @Test
+    public void getAllBookingsForBookerStatePast() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+
+        booking.setStart(LocalDateTime.of(2020, 1, 1, 1, 1, 1));
+        booking.setEnd(LocalDateTime.of(2020, 1, 2, 1, 1, 1));
+
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForBooker(1L, BookingState.PAST, pageable);
+
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
+
+    @Test
+    public void getAllBookingsForBookerStateFuture() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForBooker(1L, BookingState.FUTURE, pageable);
+
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
+
+    @Test
+    public void getAllBookingsForBookerStateRejected() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+
+        booking.setStatus(BookingStatus.REJECTED);
+
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForBooker(1L, BookingState.REJECTED, pageable);
+
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
+
+    @Test
+    public void getAllBookingsForBookerStateWaiting() {
+        when(bookingRepository.findByBookerOrderByStartDesc(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(booking));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+
+        List<BookingResponseDto> bookingResponseDtos =
+                bookingService.getAllBookingsForBooker(1L, BookingState.WAITING, pageable);
+
+        assertThat(bookingResponseDtos.size()).isGreaterThan(0);
+    }
 }

@@ -16,107 +16,93 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
+    @Mock
+    private UserRepository userRepository;
+    @InjectMocks
+    private UserService userService;
 
-  @Mock private UserRepository userRepository;
+    private User user;
+    private UserDto userDto;
 
-  @InjectMocks private UserService userService;
+    @BeforeEach
+    public void setUp() {
+        user = User.builder().id(1L).name("Timmy").email("timmy@email.com").build();
+        userDto = UserDto.builder().name("Timmy").email("timmy@email.com").build();
+    }
 
-  private User user;
-  private UserDto otherUserDto;
-  private UserDto userDto;
+    @Test
+    void create() {
+        when(userRepository.save(Mockito.any(User.class))).thenReturn(user);
 
-  @BeforeEach
-  public void setUp() {
-    user = User.builder().id(1L).name("Timmy").email("timmy@email.com").build();
-    otherUserDto = UserDto.builder().name("Gimmy").email("timmy@email.com").build();
-    userDto = UserDto.builder().name("Timmy").email("timmy@email.com").build();
-  }
+        UserDto savedUser = userService.add(userDto);
 
-  @Test
-  void create() {
-    when(userRepository.save(Mockito.any(User.class))).thenReturn(user);
+        Assertions.assertThat(savedUser).isNotNull();
+    }
 
-    UserDto savedUser = userService.add(userDto);
+    @Test
+    void update() {
+        UserDto userUpdateDto = UserDto.builder().name("Timmy2").email("timmy2@email.com").build();
 
-    Assertions.assertThat(savedUser).isNotNull();
-  }
+        when(userRepository.save(Mockito.any(User.class))).thenReturn(user);
+        when(userRepository.findById(Mockito.anyLong())).thenReturn(Optional.ofNullable(user));
 
-  @Test
-  void update() {
-    UserDto userUpdateDto = UserDto.builder().name("Timmy2").email("timmy2@email.com").build();
+        UserDto updatedUser = userService.update(userUpdateDto, 1L);
 
-    when(userRepository.save(Mockito.any(User.class))).thenReturn(user);
-    when(userRepository.findById(Mockito.anyLong())).thenReturn(Optional.ofNullable(user));
+        Assertions.assertThat(updatedUser).isNotNull();
+        Assertions.assertThat(updatedUser.getId()).isEqualTo(1L);
+        Assertions.assertThat(updatedUser.getName()).isEqualTo("Timmy2");
+        Assertions.assertThat(updatedUser.getEmail()).isEqualTo("timmy2@email.com");
 
-    UserDto updatedUser = userService.update(userUpdateDto, 1L);
+        userUpdateDto.setName(null);
+        userUpdateDto.setEmail(null);
 
-    Assertions.assertThat(updatedUser).isNotNull();
-    Assertions.assertThat(updatedUser.getId()).isEqualTo(1L);
-    Assertions.assertThat(updatedUser.getName()).isEqualTo("Timmy2");
-    Assertions.assertThat(updatedUser.getEmail()).isEqualTo("timmy2@email.com");
+        UserDto updatedUserWithoutNameAndEmail = userService.update(userUpdateDto, 1L);
 
-    userUpdateDto.setName(null);
-    userUpdateDto.setEmail(null);
+        Assertions.assertThat(updatedUserWithoutNameAndEmail).isNotNull();
+        Assertions.assertThat(updatedUserWithoutNameAndEmail.getId()).isEqualTo(1L);
+        Assertions.assertThat(updatedUser.getName()).isEqualTo("Timmy2");
+        Assertions.assertThat(updatedUser.getEmail()).isEqualTo("timmy2@email.com");
+    }
 
-    UserDto updatedUserWithoutNameAndEmail = userService.update(userUpdateDto, 1L);
+    @Test
+    void findById() {
+        when(userRepository.findById(Mockito.anyLong())).thenReturn(Optional.ofNullable(user));
 
-    Assertions.assertThat(updatedUserWithoutNameAndEmail).isNotNull();
-    Assertions.assertThat(updatedUserWithoutNameAndEmail.getId()).isEqualTo(1L);
-    Assertions.assertThat(updatedUser.getName()).isEqualTo("Timmy2");
-    Assertions.assertThat(updatedUser.getEmail()).isEqualTo("timmy2@email.com");
-  }
+        UserDto updatedUser = userService.findById(1L);
 
-  @Test
-  void findById() {
-    when(userRepository.findById(Mockito.anyLong())).thenReturn(Optional.ofNullable(user));
+        Assertions.assertThat(updatedUser).isNotNull();
+        Assertions.assertThat(updatedUser.getId()).isEqualTo(1L);
+        Assertions.assertThat(updatedUser.getName()).isEqualTo("Timmy");
+        Assertions.assertThat(updatedUser.getEmail()).isEqualTo("timmy@email.com");
+    }
 
-    UserDto updatedUser = userService.findById(1L);
+    @Test
+    void removeById() {
+        userService.removeById(1L);
 
-    Assertions.assertThat(updatedUser).isNotNull();
-    Assertions.assertThat(updatedUser.getId()).isEqualTo(1L);
-    Assertions.assertThat(updatedUser.getName()).isEqualTo("Timmy");
-    Assertions.assertThat(updatedUser.getEmail()).isEqualTo("timmy@email.com");
-  }
+        verify(userRepository, times(1)).deleteById(anyLong());
+    }
 
-  @Test
-  void removeById() {
-    userService.removeById(1L);
+    @Test
+    void findAll() {
+        when(userRepository.findAll()).thenReturn(Collections.singletonList(user));
 
-    verify(userRepository, times(1)).deleteById(anyLong());
-  }
+        List<UserDto> userDtos = userService.findAll();
 
-  @Test
-  void findAll() {
-    when(userRepository.findAll()).thenReturn(Collections.singletonList(user));
+        Assertions.assertThat(userDtos.size()).isEqualTo(1);
+        Assertions.assertThat(userDtos.get(0).getId()).isEqualTo(1L);
+    }
 
-    List<UserDto> userDtos = userService.findAll();
+    @Test
+    public void findByIdShouldReturnException() {
+        when(userRepository.findById(Mockito.anyLong())).thenReturn(Optional.empty());
 
-    Assertions.assertThat(userDtos.size()).isEqualTo(1);
-    Assertions.assertThat(userDtos.get(0).getId()).isEqualTo(1L);
-  }
-
-  @Test
-  public void findByIdShouldReturnException() {
-    when(userRepository.findById(Mockito.anyLong())).thenReturn(Optional.empty());
-
-    Assertions.assertThatExceptionOfType(CustomExceptions.UserNotFoundException.class)
-            .isThrownBy(() -> userService.findById(1L));
-  }
-
-//  @Test
-//  public void createShouldReturnUserException() {
-//    when(userRepository.findAll()).thenReturn(Collections.singletonList(user));
-//
-//    assertThatExceptionOfType(CustomExceptions.UserException.class)
-//            .isThrownBy(() -> {
-//              userService.add(otherUserDto);
-//              userService.add(otherUserDto);
-//            });
-//  }
+        Assertions.assertThatExceptionOfType(CustomExceptions.UserNotFoundException.class)
+                .isThrownBy(() -> userService.findById(1L));
+    }
 }

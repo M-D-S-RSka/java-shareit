@@ -100,57 +100,15 @@ public class BookingService {
 
         return bookingResponseDtos;
     }
-//    public List<BookingResponseDto> getAllBookingsForOwnerOrBooker(Long userId, String bookingState, String userType) {
-//        List<Booking> bookings;
-//        try {
-//            BookingState state = BookingState.valueOf(bookingState);
-//            bookings = userType.equals("OWNER") ? bookingRepository
-//                    .findAllByItemOwner_IdOrderByStartDesc(userId) : bookingRepository
-//                    .findAllByBooker_IdOrderByStartDesc(userId);
-//            if (bookings.isEmpty()) {
-//                throw new CustomExceptions.BookingNotFoundException("Requests not found");
-//            }
-//
-//            List<BookingResponseDto> bookingResponseDtos = new ArrayList<>();
-//
-//            for (Booking booking : bookings) {
-//                LocalDateTime now = LocalDateTime.now();
-//                LocalDateTime start = booking.getStart();
-//                LocalDateTime end = booking.getEnd();
-//                BookingStatus status = booking.getStatus();
-//
-//                if (state == BookingState.ALL
-//                        || state == BookingState.CURRENT && now.isAfter(start) && now.isBefore(end)
-//                        || state == BookingState.FUTURE && now.isBefore(start)
-//                        || state == BookingState.PAST && now.isAfter(end)
-//                        || state == BookingState.WAITING && status.equals(BookingStatus.WAITING)
-//                        || state == BookingState.REJECTED && status.equals(BookingStatus.REJECTED)) {
-//                    bookingResponseDtos.add(BookingMapper.toResponseDto(booking));
-//                }
-//            }
-//
-//            Comparator<BookingResponseDto> comparator =
-//                    Comparator.comparing(BookingResponseDto::getEnd, Comparator.reverseOrder());
-//            bookingResponseDtos.sort(comparator);
-//
-//            return bookingResponseDtos;
-//
-//        } catch (IllegalArgumentException e) {
-//            throw new CustomExceptions.BookingStateException(
-//                    String.format("Unknown state: %s", bookingState));
-//        }
-//    }
 
     public List<BookingResponseDto> getAllBookingsForBooker(Long userId, BookingState bookingState, Pageable pageable) {
         User user = getUser(userId);
         List<Booking> bookings = bookingRepository.findByBookerOrderByStartDesc(user, pageable);
-
         return getAllBookingsForOwnerOrBooker(bookings, bookingState);
     }
 
     public List<BookingResponseDto> getAllBookingsForOwner(Long userId, BookingState bookingState, Pageable pageable) {
         List<Booking> bookings = bookingRepository.findAllByItemOwner_IdOrderByStartDesc(userId, pageable);
-
         return getAllBookingsForOwnerOrBooker(bookings, bookingState);
     }
 }

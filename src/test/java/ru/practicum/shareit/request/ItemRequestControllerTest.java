@@ -23,99 +23,89 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-//
+
 @WebMvcTest(ItemRequestController.class)
 public class ItemRequestControllerTest {
-  @Autowired MockMvc mockMvc;
-  @MockBean ItemRequestService itemRequestService;
+    @Autowired
+    MockMvc mockMvc;
+    @MockBean
+    ItemRequestService itemRequestService;
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final String USER_ID_HEADER = "X-Sharer-User-Id";
+    private final LocalDateTime dateTime = LocalDateTime.of(2020, 1, 1, 1, 1, 1);
+    private ItemRequestDto itemRequestDtoIn;
+    private ItemRequestDto itemRequestDtoOut;
+    private ItemDto itemDto;
 
-  private static final String USER_ID_HEADER = "X-Sharer-User-Id";
-  private final LocalDateTime dateTime = LocalDateTime.of(2020, 1, 1, 1, 1, 1);
+    @BeforeEach
+    public void setUp() {
+        itemDto = ItemDto.builder()
+                .id(1L)
+                .name("Item1")
+                .description("Item1 description")
+                .available(true)
+                .requestId(1L)
+                .build();
+        itemRequestDtoIn = ItemRequestDto.builder().description("description").build();
+        itemRequestDtoOut = ItemRequestDto.builder()
+                .id(1L)
+                .description("description")
+                .created(dateTime)
+                .items(Collections.singletonList(itemDto))
+                .build();
+    }
 
-  private ItemRequestDto itemRequestDtoIn;
-  private ItemRequestDto itemRequestDtoOut;
-  private ItemDto itemDto;
+    @Test
+    public void addRequestShouldReturnItemRequestDto() throws Exception {
+        when(itemRequestService.addRequest(any(ItemRequestDto.class), anyLong())).thenReturn(itemRequestDtoOut);
 
-  @BeforeEach
-  public void setUp() {
-    itemDto =
-        ItemDto.builder()
-            .id(1L)
-            .name("Item1")
-            .description("Item1 description")
-            .available(true)
-            .requestId(1L)
-            .build();
-    itemRequestDtoIn = ItemRequestDto.builder().description("description").build();
-    itemRequestDtoOut =
-        ItemRequestDto.builder()
-            .id(1L)
-            .description("description")
-            .created(dateTime)
-            .items(Collections.singletonList(itemDto))
-            .build();
-  }
+        mockMvc.perform(post("/requests/")
+                        .header(USER_ID_HEADER, 1)
+                        .content(objectMapper.writeValueAsString(itemRequestDtoIn))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .characterEncoding(StandardCharsets.UTF_8)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.description").value("description"));
+    }
 
-  @Test
-  public void addRequestShouldReturnItemRequestDto() throws Exception {
-    when(itemRequestService.addRequest(any(ItemRequestDto.class), anyLong()))
-        .thenReturn(itemRequestDtoOut);
+    @Test
+    public void findByRequestIdShouldReturnItemRequestDto() throws Exception {
+        when(itemRequestService.findByRequestId(anyLong(), anyLong())).thenReturn(itemRequestDtoOut);
 
-    mockMvc
-        .perform(
-            post("/requests/")
-                .header(USER_ID_HEADER, 1)
-                .content(objectMapper.writeValueAsString(itemRequestDtoIn))
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8)
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(1))
-        .andExpect(jsonPath("$.description").value("description"));
-  }
+        mockMvc.perform(get("/requests/{requestId}", 1).header(USER_ID_HEADER, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.description").value("description"))
+                .andExpect(jsonPath("$.created").value(dateTime.toString()));
+    }
 
-  @Test
-  public void findByRequestIdShouldReturnItemRequestDto() throws Exception {
-    when(itemRequestService.findByRequestId(anyLong(), anyLong())).thenReturn(itemRequestDtoOut);
+    @Test
+    public void findAllByOwnerRequestIdShouldReturnListOfItemRequestDto() throws Exception {
+        when(itemRequestService.findAllByOwnerRequestId(anyLong()))
+                .thenReturn(Collections.singletonList(itemRequestDtoOut));
 
-    mockMvc
-        .perform(get("/requests/{requestId}", 1).header(USER_ID_HEADER, 1))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(1))
-        .andExpect(jsonPath("$.description").value("description"))
-        .andExpect(jsonPath("$.created").value(dateTime.toString()));
-  }
+        mockMvc.perform(get("/requests").header(USER_ID_HEADER, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
 
-  @Test
-  public void findAllByOwnerRequestIdShouldReturnListOfItemRequestDto() throws Exception {
-    when(itemRequestService.findAllByOwnerRequestId(anyLong()))
-        .thenReturn(Collections.singletonList(itemRequestDtoOut));
+    @Test
+    public void findAllShouldReturnListOfItemRequestDto() throws Exception {
+        when(itemRequestService.findAll(anyLong(), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(itemRequestDtoOut));
 
-    mockMvc
-        .perform(get("/requests").header(USER_ID_HEADER, 1))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1));
-  }
+        mockMvc.perform(get("/requests/all")
+                        .header(USER_ID_HEADER, 1)
+                        .queryParam("from", "1")
+                        .queryParam("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
 
-  @Test
-  public void findAllShouldReturnListOfItemRequestDto() throws Exception {
-    when(itemRequestService.findAll(anyLong(), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(itemRequestDtoOut));
-
-    mockMvc
-        .perform(
-            get("/requests/all")
-                .header(USER_ID_HEADER, 1)
-                .queryParam("from", "1")
-                .queryParam("size", "1"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1));
-
-    mockMvc
-        .perform(get("/requests/all").header(USER_ID_HEADER, 1))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1));
-  }
+        mockMvc.perform(get("/requests/all").header(USER_ID_HEADER, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
 }

@@ -34,187 +34,179 @@ import static ru.practicum.shareit.utils.UtilsClass.getPageable;
 
 @ExtendWith(MockitoExtension.class)
 public class ItemServiceTest {
-  @Mock private ItemRepository itemRepository;
-  @Mock private UserRepository userRepository;
-  @Mock private BookingRepository bookingRepository;
-  @Mock private CommentRepository commentRepository;
-  @Mock private ItemRequestRepository itemRequestRepository;
+    @Mock
+    private ItemRepository itemRepository;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private BookingRepository bookingRepository;
+    @Mock
+    private CommentRepository commentRepository;
+    @Mock
+    private ItemRequestRepository itemRequestRepository;
+    @InjectMocks
+    private ItemService itemService;
 
-  @InjectMocks private ItemService itemService;
+    private User user;
+    private Item item;
+    private ItemRequest itemRequest;
+    private final LocalDateTime now = LocalDateTime.now();
+    private Pageable pageable;
+    private Booking booking;
+    private Comment comment;
+    private ItemDto itemDtoIn;
+    private ItemDto itemDtoInWithRequest;
+    private CommentRequestDto commentRequestDto;
 
-  private User user;
-  private Item item;
-  private ItemRequest itemRequest;
-  private final LocalDateTime now = LocalDateTime.now();
-  private Pageable pageable;
+    @BeforeEach
+    public void setUp() {
+        user = User.builder().id(1L).name("Timmy").email("timmy@email.com").build();
+        itemRequest = ItemRequest.builder()
+                .id(1L)
+                .description("Item request description")
+                .requester(user)
+                .created(now)
+                .build();
+        item = Item.builder()
+                .id(1L)
+                .name("Item")
+                .description("Item description")
+                .owner(user)
+                .available(true)
+                .request(itemRequest)
+                .build();
 
-  private Booking booking;
-  private Comment comment;
+        itemDtoIn = ItemDto.builder()
+                .id(1L)
+                .name("Item")
+                .description("Item desctiption")
+                .available(true)
+                .build();
+        itemDtoInWithRequest = ItemDto.builder()
+                .id(1L)
+                .name("Item")
+                .description("Item desctiption")
+                .available(true)
+                .requestId(1L)
+                .build();
+        booking = Booking.builder()
+                .id(1L)
+                .item(item)
+                .booker(user)
+                .status(BookingStatus.APPROVED)
+                .start(now)
+                .end(now)
+                .build();
 
-  private ItemDto itemDtoIn;
-  private ItemDto itemDtoInWithRequest;
-  private CommentRequestDto commentRequestDto;
+        comment = Comment.builder().id(1L).item(item).text("text").author(user).created(now).build();
+        commentRequestDto = new CommentRequestDto("text");
+        pageable = getPageable(0, 10);
+    }
 
-  @BeforeEach
-  public void setUp() {
-    user = User.builder().id(1L).name("Timmy").email("timmy@email.com").build();
-    itemRequest =
-        ItemRequest.builder()
-            .id(1L)
-            .description("Item request description")
-            .requester(user)
-            .created(now)
-            .build();
-    item =
-        Item.builder()
-            .id(1L)
-            .name("Item")
-            .description("Item description")
-            .owner(user)
-            .available(true)
-            .request(itemRequest)
-            .build();
+    @Test
+    public void createShouldReturnItemDto() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        when(itemRepository.save(any(Item.class))).thenReturn(item);
+        when(itemRequestRepository.findById(anyLong())).thenReturn(Optional.ofNullable(itemRequest));
 
-    itemDtoIn =
-        ItemDto.builder()
-            .id(1L)
-            .name("Item")
-            .description("Item desctiption")
-            .available(true)
-            .build();
-    itemDtoInWithRequest =
-        ItemDto.builder()
-            .id(1L)
-            .name("Item")
-            .description("Item desctiption")
-            .available(true)
-            .requestId(1L)
-            .build();
-    booking =
-        Booking.builder()
-            .id(1L)
-            .item(item)
-            .booker(user)
-            .status(BookingStatus.APPROVED)
-            .start(now)
-            .end(now)
-            .build();
+        ItemDto createdItem = itemService.add(1L, itemDtoIn);
 
-    comment = Comment.builder().id(1L).item(item).text("text").author(user).created(now).build();
-    commentRequestDto = new CommentRequestDto("text");
+        assertThat(createdItem).isNotNull();
+        assertThat(createdItem.getId()).isEqualTo(1L);
+        assertThat(createdItem.getName()).isEqualTo(itemDtoIn.getName());
 
-    pageable = getPageable(0, 10);
-  }
+        ItemDto createdItemWithRequest = itemService.add(1L, itemDtoInWithRequest);
 
-  @Test
-  public void createShouldReturnItemDto() {
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
-    when(itemRepository.save(any(Item.class))).thenReturn(item);
-    when(itemRequestRepository.findById(anyLong())).thenReturn(Optional.ofNullable(itemRequest));
+        assertThat(createdItemWithRequest).isNotNull();
+        assertThat(createdItemWithRequest.getId()).isEqualTo(1L);
+        assertThat(createdItemWithRequest.getName()).isEqualTo(itemDtoInWithRequest.getName());
+        assertThat(createdItemWithRequest.getRequestId()).isEqualTo(itemDtoInWithRequest.getRequestId());
+    }
 
-    ItemDto createdItem = itemService.add(1L, itemDtoIn);
+    @Test
+    public void findByIdShouldReturnItemPlusResponseDto() {
+        when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(), anyLong())).thenReturn(booking);
+        when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
+        when(commentRepository.findAllByItemId(anyLong())).thenReturn(Collections.singletonList(comment));
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
 
-    assertThat(createdItem).isNotNull();
-    assertThat(createdItem.getId()).isEqualTo(1L);
-    assertThat(createdItem.getName()).isEqualTo(itemDtoIn.getName());
+        ItemPlusResponseDto itemPlusResponseDto = itemService.findItemById(1L, 1L);
 
-    ItemDto createdItemWithRequest = itemService.add(1L, itemDtoInWithRequest);
+        assertThat(itemPlusResponseDto.getId()).isEqualTo(item.getId());
+        assertThat(itemPlusResponseDto.getComments().size()).isEqualTo(1);
+    }
 
-    assertThat(createdItemWithRequest).isNotNull();
-    assertThat(createdItemWithRequest.getId()).isEqualTo(1L);
-    assertThat(createdItemWithRequest.getName()).isEqualTo(itemDtoInWithRequest.getName());
-    assertThat(createdItemWithRequest.getRequestId())
-        .isEqualTo(itemDtoInWithRequest.getRequestId());
-  }
+    @Test
+    public void findAllByUserIdShouldReturnListOfItemPlusResponseDto() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc
+                (anyLong(), anyLong())).thenReturn(booking);
+        when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
+        when(commentRepository.findAllByItemId(anyLong())).thenReturn(Collections.singletonList(comment));
+        when(itemRepository.findByOwner(any(User.class), any(Pageable.class))).thenReturn(Collections.singletonList(item));
 
-  @Test
-  public void findByIdShouldReturnItemPlusResponseDto() {
-    when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(), anyLong())).thenReturn(booking);
-    when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
-    when(commentRepository.findAllByItemId(anyLong()))
-        .thenReturn(Collections.singletonList(comment));
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+        List<ItemPlusResponseDto> dtosWithPagination = itemService.findAllByUserId(1L, pageable);
 
-    ItemPlusResponseDto itemPlusResponseDto = itemService.findItemById(1L, 1L);
+        assertThat(dtosWithPagination.size()).isEqualTo(1);
+    }
 
-    assertThat(itemPlusResponseDto.getId()).isEqualTo(item.getId());
-    assertThat(itemPlusResponseDto.getComments().size()).isEqualTo(1);
-  }
+    @Test
+    public void searchShouldReturnListOfItemDto() {
+        when(itemRepository.search(anyString(), any(Pageable.class))).thenReturn(Collections.singletonList(item));
 
-  @Test
-  public void findAllByUserIdShouldReturnListOfItemPlusResponseDto() {
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
-    when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(), anyLong())).thenReturn(booking);
-    when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
-    when(commentRepository.findAllByItemId(anyLong()))
-        .thenReturn(Collections.singletonList(comment));
-    when(itemRepository.findByOwner(any(User.class), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(item));
+        List<ItemDto> dtosWithPagination = itemService.search("text", pageable);
 
-    List<ItemPlusResponseDto> dtosWithPagination = itemService.findAllByUserId(1L, pageable);
+        assertThat(dtosWithPagination.size()).isEqualTo(1);
+    }
 
-    assertThat(dtosWithPagination.size()).isEqualTo(1);
-  }
+    @Test
+    public void addCommentShouldReturnCommentResponseDto() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        when(itemRepository.findByIdAndBookerIdAndFinishedBooking(anyLong(), anyLong()))
+                .thenReturn(Optional.ofNullable(item));
+        when(commentRepository.save(any(Comment.class))).thenReturn(comment);
 
-  @Test
-  public void searchShouldReturnListOfItemDto() {
-    when(itemRepository.search(anyString(), any(Pageable.class)))
-        .thenReturn(Collections.singletonList(item));
+        CommentResponseDto commentResponseDto = itemService.addComment(1L, 1L, commentRequestDto);
 
-    List<ItemDto> dtosWithPagination = itemService.search("text", pageable);
+        assertThat(commentResponseDto).isNotNull();
+        assertThat(commentResponseDto.getAuthorName()).isEqualTo(comment.getAuthor().getName());
+        assertThat(commentResponseDto.getText()).isEqualTo(commentRequestDto.getText());
+    }
 
-    assertThat(dtosWithPagination.size()).isEqualTo(1);
-  }
+    @Test
+    public void addCommentShouldReturnItemNotAvailableException() {
+        when(itemRepository.findByIdAndBookerIdAndFinishedBooking(anyLong(), anyLong())).thenReturn(Optional.empty());
 
-  @Test
-  public void addCommentShouldReturnCommentResponseDto() {
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
-    when(itemRepository.findByIdAndBookerIdAndFinishedBooking(anyLong(), anyLong()))
-        .thenReturn(Optional.ofNullable(item));
-    when(commentRepository.save(any(Comment.class))).thenReturn(comment);
+        Assertions.assertThatExceptionOfType(CustomExceptions.ItemNotAvailableException.class)
+                .isThrownBy(() -> itemService.addComment(1L, 1L, commentRequestDto));
+    }
 
-    CommentResponseDto commentResponseDto = itemService.addComment(1L, 1L, commentRequestDto);
+    @Test
+    public void updateFieldsShouldReturnItemDto() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
+        when(itemRepository.save(any(Item.class))).thenReturn(item);
 
-    assertThat(commentResponseDto).isNotNull();
-    assertThat(commentResponseDto.getAuthorName()).isEqualTo(comment.getAuthor().getName());
-    assertThat(commentResponseDto.getText()).isEqualTo(commentRequestDto.getText());
-  }
+        Map<String, Object> params = new HashMap<>();
+        params.put("description", "text2");
 
-  @Test
-  public void addCommentShouldReturnItemNotAvailableException() {
-    when(itemRepository.findByIdAndBookerIdAndFinishedBooking(anyLong(), anyLong()))
-        .thenReturn(Optional.empty());
+        ItemDto itemDto = itemService.updateItem(1L, 1L, params);
 
-    Assertions.assertThatExceptionOfType(CustomExceptions.ItemNotAvailableException.class)
-        .isThrownBy(() -> itemService.addComment(1L, 1L, commentRequestDto));
-  }
+        assertThat(itemDto).isNotNull();
+        assertThat(itemDto.getDescription()).isEqualTo(params.get("description"));
+    }
 
-  @Test
-  public void updateFieldsShouldReturnItemDto() {
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
-    when(itemRepository.save(any(Item.class))).thenReturn(item);
+    @Test
+    public void updateFieldsThrowsUserNotFoundException() {
+        User otherUser = User.builder().id(2L).name("Gimmy").email("gimmy@email.com").build();
 
-    Map<String, Object> params = new HashMap<>();
-    params.put("description", "text2");
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(otherUser));
 
-    ItemDto itemDto = itemService.updateItem(1L, 1L, params);
+        Map<String, Object> params = new HashMap<>();
+        params.put("description", "text2");
 
-    assertThat(itemDto).isNotNull();
-    assertThat(itemDto.getDescription()).isEqualTo(params.get("description"));
-  }
-
-  @Test
-  public void updateFieldsThrowsUserNotFoundException() {
-    User otherUser = User.builder().id(2L).name("Gimmy").email("gimmy@email.com").build();
-
-    when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
-    when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(otherUser));
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("description", "text2");
-
-    Assertions.assertThatExceptionOfType(CustomExceptions.UserNotFoundException.class)
-        .isThrownBy(() -> itemService.updateItem(2L, 1L, params));
-  }
+        Assertions.assertThatExceptionOfType(CustomExceptions.UserNotFoundException.class)
+                .isThrownBy(() -> itemService.updateItem(2L, 1L, params));
+    }
 }

@@ -44,7 +44,6 @@ public class UserService {
             }
             user.setEmail(email);
         }
-
         userRepository.save(user);
         log.info("updated the user with the id = {}", id);
         return UserMapper.userDto(user);

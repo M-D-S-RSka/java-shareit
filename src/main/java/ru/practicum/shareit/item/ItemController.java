@@ -52,32 +52,17 @@ public class ItemController {
     }
 
     @GetMapping
-//    public List<ItemPlusResponseDto> findAllByUserId(@RequestHeader(USER_ID_HEADER) Long userId) {
-//        log.info("Finding all items by user id: {}", userId);
-//        return itemService.findAllByUserId(userId);
-//    }
     public List<ItemPlusResponseDto> findAllByUserId(@RequestHeader(USER_ID_HEADER) Long userId,
-            @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero Integer from,
-            @RequestParam(name = "size", defaultValue = "10") @Min(1) Integer size) {
+                                                     @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero Integer from,
+                                                     @RequestParam(name = "size", defaultValue = "10") @Min(1) Integer size) {
         log.info("Finding all items by userId={}, from={}, size={}", userId, from, size);
-
         Pageable pageable = getPageable(from, size);
         return itemService.findAllByUserId(userId, pageable);
     }
 
     @GetMapping("/search")
-//    public List<ItemDto> search(@RequestParam String text) {
-//        log.info("Searching items by text: {}", text);
-//        if (text == null || text.trim().isEmpty()) {
-//            log.info("Search text is empty, returning empty list.");
-//            return new ArrayList<>();
-//        }
-//        return itemService.search(text);
-//    }
-    public List<ItemDto> search(
-            @RequestParam String text,
-            @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero Integer from,
-            @RequestParam(name = "size", defaultValue = "10") @Min(1) Integer size) {
+    public List<ItemDto> search(@RequestParam String text, @RequestParam(name = "from", defaultValue = "0")
+    @PositiveOrZero Integer from, @RequestParam(name = "size", defaultValue = "10") @Min(1) Integer size) {
         log.info("Searching items by text={}, from={}, size={}", text, from, size);
 
         if (text == null || text.trim().isEmpty()) {
@@ -85,7 +70,6 @@ public class ItemController {
             return new ArrayList<>();
         }
         Pageable pageable = getPageable(from, size);
-
         return itemService.search(text, pageable);
     }
 

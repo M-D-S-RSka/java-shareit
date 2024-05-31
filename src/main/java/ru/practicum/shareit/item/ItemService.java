@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.springframework.util.ReflectionUtils.findField;
 import static org.springframework.util.ReflectionUtils.setField;
@@ -53,9 +52,7 @@ public class ItemService {
         } else {
             item = ItemMapper.toModel(itemDto, user);
         }
-
         Item itemToSave = itemRepository.save(item);
-
         log.info("add a new item: {}; for a user with id = {}", itemDto, userId);
         return ItemMapper.toDto(itemToSave);
     }
@@ -81,7 +78,6 @@ public class ItemService {
                 }
             }
             itemRepository.save(item);
-
             log.info("update the item with id = {} from the user with id = {}", itemId, userId);
             return ItemMapper.toDto(item);
         } else {
@@ -107,25 +103,10 @@ public class ItemService {
             List<Comment> comments = commentRepository.findAllByItemId(item.getId());
             itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
         }
-
         Comparator<ItemPlusResponseDto> comparator = Comparator.comparing(ItemPlusResponseDto::getId);
         itemsDto.sort(comparator);
-
         log.info("found all user items = {} with id = {}", itemsDto.size(), userId);
         return itemsDto;
-
-//        for (Item item : itemRepository.findAll()) {
-//            if (item.getOwner().getId().equals(userId)) {
-//                Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
-//                Booking last = bookingRepository
-//                        .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(
-//                                item.getId(), userId);
-//                List<Comment> comments = commentRepository.findAllByItemId(item.getId());
-//                itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
-//            }
-//        }
-
-
     }
 
     public List<ItemDto> search(String text, Pageable pageable) {
@@ -140,7 +121,6 @@ public class ItemService {
         }
         log.info("Total items found: {}", itemsDto.size());
         return itemsDto;
-//        return itemRepository.search(text).stream().map(ItemMapper::toDto).collect(Collectors.toList());
     }
 
     private User findUser(Long userId) {
@@ -164,7 +144,6 @@ public class ItemService {
         if (commentRequestDto.getText() != null && !commentRequestDto.getText().isEmpty()) {
             Comment comment = CommentMapper.toModel(commentRequestDto, user, item);
             commentRepository.save(comment);
-
             log.info("User id={} added a comment to the id={} thing.", userId, itemId);
             return CommentMapper.toResponseDto(comment);
         } else {
