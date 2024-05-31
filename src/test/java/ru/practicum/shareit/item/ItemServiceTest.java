@@ -125,7 +125,8 @@ public class ItemServiceTest {
 
     @Test
     public void findByIdShouldReturnItemPlusResponseDto() {
-        when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(), anyLong())).thenReturn(booking);
+        when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(),
+                anyLong())).thenReturn(booking);
         when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
         when(commentRepository.findAllByItemId(anyLong())).thenReturn(Collections.singletonList(comment));
         when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
@@ -143,7 +144,8 @@ public class ItemServiceTest {
                 (anyLong(), anyLong())).thenReturn(booking);
         when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
         when(commentRepository.findAllByItemId(anyLong())).thenReturn(Collections.singletonList(comment));
-        when(itemRepository.findByOwner(any(User.class), any(Pageable.class))).thenReturn(Collections.singletonList(item));
+        when(itemRepository.findByOwner(any(User.class), any(Pageable.class)))
+                .thenReturn(Collections.singletonList(item));
 
         List<ItemPlusResponseDto> dtosWithPagination = itemService.findAllByUserId(1L, pageable);
 
@@ -175,7 +177,8 @@ public class ItemServiceTest {
 
     @Test
     public void addCommentShouldReturnItemNotAvailableException() {
-        when(itemRepository.findByIdAndBookerIdAndFinishedBooking(anyLong(), anyLong())).thenReturn(Optional.empty());
+        when(itemRepository.findByIdAndBookerIdAndFinishedBooking(anyLong(), anyLong()))
+                .thenReturn(Optional.empty());
 
         Assertions.assertThatExceptionOfType(CustomExceptions.ItemNotAvailableException.class)
                 .isThrownBy(() -> itemService.addComment(1L, 1L, commentRequestDto));
