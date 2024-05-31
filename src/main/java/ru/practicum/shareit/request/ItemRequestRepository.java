@@ -12,6 +12,4 @@ public interface ItemRequestRepository extends JpaRepository<ItemRequest, Long> 
     List<ItemRequest> findByRequester(User requester);
 
     List<ItemRequest> findAllByRequesterNot(User requester, Pageable pageable);
-
-    List<ItemRequest> findAllByRequesterNot(User requester);
 }
