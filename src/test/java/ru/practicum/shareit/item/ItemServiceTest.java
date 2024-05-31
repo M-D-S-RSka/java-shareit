@@ -125,8 +125,9 @@ public class ItemServiceTest {
 
     @Test
     public void findByIdShouldReturnItemPlusResponseDto() {
-        when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(),
-                anyLong())).thenReturn(booking);
+        when(bookingRepository
+                .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(), anyLong()))
+                .thenReturn(booking);
         when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
         when(commentRepository.findAllByItemId(anyLong())).thenReturn(Collections.singletonList(comment));
         when(itemRepository.findById(anyLong())).thenReturn(Optional.ofNullable(item));
@@ -140,8 +141,9 @@ public class ItemServiceTest {
     @Test
     public void findAllByUserIdShouldReturnListOfItemPlusResponseDto() {
         when(userRepository.findById(anyLong())).thenReturn(Optional.ofNullable(user));
-        when(bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc
-                (anyLong(), anyLong())).thenReturn(booking);
+        when(bookingRepository
+                .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(anyLong(), anyLong()))
+                .thenReturn(booking);
         when(bookingRepository.findAllByBooker_IdOrderByStartDesc(anyLong(), anyLong())).thenReturn(booking);
         when(commentRepository.findAllByItemId(anyLong())).thenReturn(Collections.singletonList(comment));
         when(itemRepository.findByOwner(any(User.class), any(Pageable.class)))
