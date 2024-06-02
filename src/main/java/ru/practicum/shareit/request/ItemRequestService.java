@@ -43,15 +43,9 @@ public class ItemRequestService {
 
     public List<ItemRequestDto> findAllByOwnerRequestId(Long userId) {
         User user = getUser(userId);
-
-
-        if (user == null) {
-            return List.of();
-        } else {
-            return itemRequestRepository.findByRequester(user).stream()
-                    .map(request -> toDto(request, getItems(request)))
-                    .collect(Collectors.toList());
-        }
+        return itemRequestRepository.findByRequester(user).stream()
+                .map(request -> toDto(request, getItems(request)))
+                .collect(Collectors.toList());
     }
 
     public List<ItemRequestDto> findAll(Long userId, Pageable pageable) {

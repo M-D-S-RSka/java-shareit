@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
-@Table(name = "item_request")
+@Table(name = "requests")
 public class ItemRequest {
     @Id
     @GeneratedValue
