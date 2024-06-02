@@ -44,7 +44,8 @@ public class ItemRequestService {
     public List<ItemRequestDto> findAllByOwnerRequestId(Long userId) {
         User user = getUser(userId);
 
-        if (itemRequestRepository.findByRequester(user) == null || itemRequestRepository.findByRequester(user).isEmpty()) {
+
+        if (user == null) {
             return List.of();
         } else {
             return itemRequestRepository.findByRequester(user).stream()
