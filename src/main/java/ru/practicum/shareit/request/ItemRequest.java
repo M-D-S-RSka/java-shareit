@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @Table(name = "requests")
 public class ItemRequest {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     private String description;
