@@ -20,6 +20,7 @@ import static ru.practicum.shareit.request.ItemRequestMapper.toModel;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ItemRequestService {
     private final UserRepository userRepository;
     private final ItemRepository itemRepository;

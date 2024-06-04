@@ -80,4 +80,10 @@ public class ItemMapper {
                 .comments(itemComments)
                 .build();
     }
+
+    public static ItemPlusResponseDto toResponsePlusDto(Object item, List<Booking> orDefault, List<Comment> orDefault1) {
+        return ItemPlusResponseDto.builder()
+                .id((Long) item)
+                .build();
+    }
 }

@@ -2,7 +2,9 @@ package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.Booking;
@@ -22,17 +24,19 @@ import ru.practicum.shareit.user.UserRepository;
 import ru.practicum.shareit.user.model.User;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
+import static org.springframework.data.domain.Sort.Direction.DESC;
 import static org.springframework.util.ReflectionUtils.findField;
 import static org.springframework.util.ReflectionUtils.setField;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ItemService {
 
     private final UserRepository userRepository;
@@ -94,15 +98,44 @@ public class ItemService {
         return ItemMapper.toResponsePlusDto(findItem(itemId), lastBooking, nextBooking, comments);
     }
 
+    // TODO - убрать обращения к бд из цикла
+    // к сожалению, в текущий момент нет возможности реализовать без обращения, т к требует много правок, не только в
+    // репозиториях...
+//    public List findAllByUserId(long userId, Pageable pageable) {
+//        Page items = itemRepository.findByOwner_Id(userId, pageable);
+//
+//        Map<Item, List<Booking>> approvedBookings =
+//                (Map<Item, List<Booking>>) bookingRepository.findApprovedForItems(items.getContent(), Sort.by(DESC, "start"))
+//                        .stream()
+//                        .collect(Collectors.groupingBy(Booking::getItem, Collectors.toList()));
+//        Map<Item, List<Comment>> comments = (Map<Item, List<Comment>>) commentRepository
+//        .findByItemIn(items.getContent(), Sort.by(DESC, "created"))
+//                .stream()
+//                .collect(Collectors.groupingBy(Comment::getItem, Collectors.toList()));
+//
+//        List<ItemPlusResponseDto> results = new ArrayList<>();
+//        for (Object item : items) {
+//            ItemPlusResponseDto itemInfo = ItemMapper.toResponsePlusDto(
+//                    item,
+//                    approvedBookings.getOrDefault((Item) item, Collections.emptyList()),
+//                    comments.getOrDefault((Item) item, Collections.emptyList())
+//            );
+//            results.add(itemInfo);
+//        }
+//        return results;
+//    }
+
     public List<ItemPlusResponseDto> findAllByUserId(Long userId, Pageable pageable) {
         List<ItemPlusResponseDto> itemsDto = new ArrayList<>();
         User user = findUser(userId);
-        for (Item item : itemRepository.findByOwner(user, pageable)) {
+        itemRepository.findByOwner(user, pageable).forEach(item -> {
             Booking next = bookingRepository.findAllByBooker_IdOrderByStartDesc(item.getId(), userId);
-            Booking last = bookingRepository.findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(item.getId(), userId);
+            Booking last = bookingRepository
+                    .findFirstByItemIdAndItemOwner_IdAndStatusAndStartDateBeforeOrderByEndDateDesc(item.getId(),
+                            userId);
             List<Comment> comments = commentRepository.findAllByItemId(item.getId());
             itemsDto.add(ItemMapper.toResponsePlusDto(item, last, next, comments));
-        }
+        });
         Comparator<ItemPlusResponseDto> comparator = Comparator.comparing(ItemPlusResponseDto::getId);
         itemsDto.sort(comparator);
         log.info("found all user items = {} with id = {}", itemsDto.size(), userId);
@@ -114,11 +147,12 @@ public class ItemService {
             log.error("empty search request");
             return new ArrayList<>();
         }
-        List<ItemDto> itemsDto = new ArrayList<>();
-        for (Item item : itemRepository.search(text, pageable)) {
-            ItemDto dto = ItemMapper.toDto(item);
-            itemsDto.add(dto);
-        }
+
+        List<Item> items = itemRepository.search(text, pageable);
+        List<ItemDto> itemsDto = items.stream()
+                .map(ItemMapper::toDto)
+                .collect(toList());
+
         log.info("Total items found: {}", itemsDto.size());
         return itemsDto;
     }
