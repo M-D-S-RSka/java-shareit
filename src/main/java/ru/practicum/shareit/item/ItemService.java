@@ -2,9 +2,7 @@ package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.Booking;
@@ -25,11 +23,8 @@ import ru.practicum.shareit.user.model.User;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
-import static org.springframework.data.domain.Sort.Direction.DESC;
 import static org.springframework.util.ReflectionUtils.findField;
 import static org.springframework.util.ReflectionUtils.setField;
 
@@ -105,7 +100,8 @@ public class ItemService {
 //        Page items = itemRepository.findByOwner_Id(userId, pageable);
 //
 //        Map<Item, List<Booking>> approvedBookings =
-//                (Map<Item, List<Booking>>) bookingRepository.findApprovedForItems(items.getContent(), Sort.by(DESC, "start"))
+//                (Map<Item, List<Booking>>) bookingRepository.findApprovedForItems(items.getContent(),
+//                Sort.by(DESC, "start"))
 //                        .stream()
 //                        .collect(Collectors.groupingBy(Booking::getItem, Collectors.toList()));
 //        Map<Item, List<Comment>> comments = (Map<Item, List<Comment>>) commentRepository
