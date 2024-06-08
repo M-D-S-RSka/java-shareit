@@ -2,7 +2,9 @@ package ru.practicum.shareit.booking;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.BookingRequestDto;
 import ru.practicum.shareit.booking.dto.BookingResponseDto;
 import ru.practicum.shareit.exceptions.CustomExceptions;
@@ -19,12 +21,14 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class BookingService {
 
     private final UserRepository userRepository;
     private final ItemRepository itemRepository;
     private final BookingRepository bookingRepository;
 
+    @Transactional
     public BookingResponseDto add(Long userId, BookingRequestDto bookingRequestDto) {
         Item item = itemRepository.findById(bookingRequestDto.getItemId())
                 .orElseThrow(() -> new CustomExceptions.ItemNotFoundException("Item not found"));
@@ -48,6 +52,7 @@ public class BookingService {
                 .orElseThrow(() -> new CustomExceptions.UserNotFoundException("User not found"));
     }
 
+    @Transactional
     public BookingResponseDto approveBooking(Long bookingId, Boolean approved, Long ownerId) {
         Booking booking = bookingRepository.findByItemOwner_IdAndId(ownerId, bookingId)
                 .orElseThrow(() -> new CustomExceptions.BookingNotFoundException("Requests not found"));
@@ -60,50 +65,51 @@ public class BookingService {
         return BookingMapper.toResponseDto(bookingRepository.save(booking));
     }
 
+    @Transactional
     public BookingResponseDto getBookingByIdForOwnerOrBooker(Long bookingId, Long userId) {
         Booking booking = bookingRepository.findAllByItemOwner_IdOrderByStartDesc(bookingId, userId)
                 .orElseThrow(() -> new CustomExceptions.BookingNotFoundException("Requests not found"));
         return BookingMapper.toResponseDto(bookingRepository.save(booking));
     }
 
-    public List<BookingResponseDto> getAllBookingsForOwnerOrBooker(Long userId, String bookingState, String userType) {
-        List<Booking> bookings;
-        try {
-            BookingState state = BookingState.valueOf(bookingState);
-            bookings = userType.equals("OWNER") ? bookingRepository
-                    .findAllByItemOwner_IdOrderByStartDesc(userId) : bookingRepository
-                    .findAllByBooker_IdOrderByStartDesc(userId);
-            if (bookings.isEmpty()) {
-                throw new CustomExceptions.BookingNotFoundException("Requests not found");
-            }
-
-            List<BookingResponseDto> bookingResponseDtos = new ArrayList<>();
-
-            for (Booking booking : bookings) {
-                LocalDateTime now = LocalDateTime.now();
-                LocalDateTime start = booking.getStart();
-                LocalDateTime end = booking.getEnd();
-                BookingStatus status = booking.getStatus();
-
-                if (state == BookingState.ALL
-                        || state == BookingState.CURRENT && now.isAfter(start) && now.isBefore(end)
-                        || state == BookingState.FUTURE && now.isBefore(start)
-                        || state == BookingState.PAST && now.isAfter(end)
-                        || state == BookingState.WAITING && status.equals(BookingStatus.WAITING)
-                        || state == BookingState.REJECTED && status.equals(BookingStatus.REJECTED)) {
-                    bookingResponseDtos.add(BookingMapper.toResponseDto(booking));
-                }
-            }
-
-            Comparator<BookingResponseDto> comparator =
-                    Comparator.comparing(BookingResponseDto::getEnd, Comparator.reverseOrder());
-            bookingResponseDtos.sort(comparator);
-
-            return bookingResponseDtos;
-
-        } catch (IllegalArgumentException e) {
-            throw new CustomExceptions.BookingStateException(
-                    String.format("Unknown state: %s", bookingState));
+    private List<BookingResponseDto> getAllBookingsForOwnerOrBooker(List<Booking> bookings, BookingState state) {
+        if (bookings.isEmpty()) {
+            throw new CustomExceptions.BookingNotFoundException("Requests not found");
         }
+
+        List<BookingResponseDto> bookingResponseDtos = new ArrayList<>();
+
+        for (Booking booking : bookings) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime start = booking.getStart();
+            LocalDateTime end = booking.getEnd();
+            BookingStatus status = booking.getStatus();
+
+            if (state == BookingState.ALL
+                    || state == BookingState.CURRENT && now.isAfter(start) && now.isBefore(end)
+                    || state == BookingState.FUTURE && now.isBefore(start)
+                    || state == BookingState.PAST && now.isAfter(end)
+                    || state == BookingState.WAITING && status.equals(BookingStatus.WAITING)
+                    || state == BookingState.REJECTED && status.equals(BookingStatus.REJECTED)) {
+                bookingResponseDtos.add(BookingMapper.toResponseDto(booking));
+            }
+        }
+
+        Comparator<BookingResponseDto> comparator =
+                Comparator.comparing(BookingResponseDto::getEnd, Comparator.reverseOrder());
+        bookingResponseDtos.sort(comparator);
+
+        return bookingResponseDtos;
+    }
+
+    public List<BookingResponseDto> getAllBookingsForBooker(Long userId, BookingState bookingState, Pageable pageable) {
+        User user = getUser(userId);
+        List<Booking> bookings = bookingRepository.findByBookerOrderByStartDesc(user, pageable);
+        return getAllBookingsForOwnerOrBooker(bookings, bookingState);
+    }
+
+    public List<BookingResponseDto> getAllBookingsForOwner(Long userId, BookingState bookingState, Pageable pageable) {
+        List<Booking> bookings = bookingRepository.findAllByItemOwner_IdOrderByStartDesc(userId, pageable);
+        return getAllBookingsForOwnerOrBooker(bookings, bookingState);
     }
 }

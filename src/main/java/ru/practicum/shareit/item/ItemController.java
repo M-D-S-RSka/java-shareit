@@ -2,6 +2,7 @@ package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.comment.dto.CommentRequestDto;
@@ -9,15 +10,20 @@ import ru.practicum.shareit.comment.dto.CommentResponseDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.dto.ItemPlusResponseDto;
 
+import javax.validation.constraints.Min;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static ru.practicum.shareit.utils.UtilsClass.getPageable;
 
 /**
  * TODO Sprint add-controllers.
  */
 
 @Slf4j
+@Validated
 @RestController
 @RequestMapping("/items")
 @RequiredArgsConstructor
@@ -46,19 +52,25 @@ public class ItemController {
     }
 
     @GetMapping
-    public List<ItemPlusResponseDto> findAllByUserId(@RequestHeader(USER_ID_HEADER) Long userId) {
-        log.info("Finding all items by user id: {}", userId);
-        return itemService.findAllByUserId(userId);
+    public List<ItemPlusResponseDto> findAllByUserId(@RequestHeader(USER_ID_HEADER) Long userId,
+                                                     @RequestParam(name = "from", defaultValue = "0") @PositiveOrZero Integer from,
+                                                     @RequestParam(name = "size", defaultValue = "10") @Min(1) Integer size) {
+        log.info("Finding all items by userId={}, from={}, size={}", userId, from, size);
+        Pageable pageable = getPageable(from, size);
+        return itemService.findAllByUserId(userId, pageable);
     }
 
     @GetMapping("/search")
-    public List<ItemDto> search(@RequestParam String text) {
-        log.info("Searching items by text: {}", text);
+    public List<ItemDto> search(@RequestParam String text, @RequestParam(name = "from", defaultValue = "0")
+    @PositiveOrZero Integer from, @RequestParam(name = "size", defaultValue = "10") @Min(1) Integer size) {
+        log.info("Searching items by text={}, from={}, size={}", text, from, size);
+
         if (text == null || text.trim().isEmpty()) {
             log.info("Search text is empty, returning empty list.");
             return new ArrayList<>();
         }
-        return itemService.search(text);
+        Pageable pageable = getPageable(from, size);
+        return itemService.search(text, pageable);
     }
 
     @PostMapping("/{itemId}/comment")

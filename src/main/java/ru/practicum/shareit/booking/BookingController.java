@@ -2,17 +2,24 @@ package ru.practicum.shareit.booking;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.booking.dto.BookingRequestDto;
 import ru.practicum.shareit.booking.dto.BookingResponseDto;
+import ru.practicum.shareit.exceptions.CustomExceptions;
 
+import javax.validation.constraints.Min;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
+
+import static ru.practicum.shareit.utils.UtilsClass.getPageable;
 
 /**
  * TODO Sprint add-bookings.
  */
 @Slf4j
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(path = "/bookings")
@@ -43,17 +50,37 @@ public class BookingController {
 
     @GetMapping
     public List<BookingResponseDto> getAllBookingsForBooker(@RequestHeader(USER_ID_HEADER) Long userId,
-                                                            @RequestParam(required = false, defaultValue = "ALL")
-                                                            String state) {
-        log.info("All Bookings For Booker userId={}, state={}", userId, state);
-        return bookingService.getAllBookingsForOwnerOrBooker(userId, state, "BOOKER");
+                                                            @RequestParam(name = "state", defaultValue = "ALL")
+                                                            String state,
+                                                            @RequestParam(name = "from", defaultValue = "0")
+                                                            @PositiveOrZero Integer from,
+                                                            @RequestParam(name = "size", defaultValue = "10")
+                                                            @Min(1) Integer size) {
+        log.info("All Bookings For Booker userId={}, state={}, from={}, size={}", userId, state, from, size);
+        Pageable pageable = getPageable(from, size);
+        try {
+            BookingState bookingState = BookingState.valueOf(state.toUpperCase());
+            return bookingService.getAllBookingsForBooker(userId, bookingState, pageable);
+        } catch (IllegalArgumentException e) {
+            throw new CustomExceptions.BookingStateException(String.format("Unknown state: %s", state));
+        }
     }
 
     @GetMapping(path = "/owner")
     public List<BookingResponseDto> getAllBookingsForOwner(@RequestHeader(USER_ID_HEADER) Long userId,
-                                                           @RequestParam(required = false, defaultValue = "ALL")
-                                                           String state) {
-        log.info("All Bookings For Owner userId={}, state={}", userId, state);
-        return bookingService.getAllBookingsForOwnerOrBooker(userId, state, "OWNER");
+                                                           @RequestParam(name = "state", defaultValue = "ALL")
+                                                           String state,
+                                                           @RequestParam(name = "from", defaultValue = "0")
+                                                           @PositiveOrZero Integer from,
+                                                           @RequestParam(name = "size", defaultValue = "10")
+                                                           @Min(1) Integer size) {
+        log.info("All Bookings For Owner userId={}, state={}, from={}, size={}", userId, state, from, size);
+        Pageable pageable = getPageable(from, size);
+        try {
+            BookingState bookingState = BookingState.valueOf(state.toUpperCase());
+            return bookingService.getAllBookingsForOwner(userId, bookingState, pageable);
+        } catch (IllegalArgumentException e) {
+            throw new CustomExceptions.BookingStateException(String.format("Unknown state: %s", state));
+        }
     }
 }

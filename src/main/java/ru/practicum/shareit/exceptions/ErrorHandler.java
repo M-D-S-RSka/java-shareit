@@ -29,7 +29,7 @@ public class ErrorHandler {
     @ResponseBody
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler({CustomExceptions.UserNotFoundException.class, CustomExceptions.ItemNotFoundException.class,
-            CustomExceptions.BookingNotFoundException.class
+            CustomExceptions.BookingNotFoundException.class, CustomExceptions.ItemRequestNotFoundException.class
     })
     ErrorResponse getUserNotFoundExceptionResponse(RuntimeException e) {
         log.error("NOT_FOUND: {}", e.getMessage());
@@ -37,9 +37,9 @@ public class ErrorHandler {
     }
 
     @ResponseBody
-    @ExceptionHandler({CustomExceptions.EmailException.class, MethodArgumentNotValidException.class,
+    @ExceptionHandler({MethodArgumentNotValidException.class,
             ConstraintViolationException.class, DataIntegrityViolationException.class,
-            CustomExceptions.ItemNotAvailableException.class, CustomExceptions.BookingDateTimeException.class,
+            CustomExceptions.ItemNotAvailableException.class,
             CustomExceptions.BookingStatusException.class
     })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
